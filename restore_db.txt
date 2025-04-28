@@ -1,0 +1,3 @@
+cat drop_all.sql | docker exec -i douane_db /usr/bin/psql -h localhost -U postgres douane
+
+cat backup_20250102.sql | docker exec -i douane_db /usr/bin/psql -h localhost -U postgres douane

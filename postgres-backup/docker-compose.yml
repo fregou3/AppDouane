@@ -1,0 +1,19 @@
+﻿version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: douane_db
+    restart: always
+    environment:
+      POSTGRES_DB: douane
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - ""
+    volumes:
+      - douane_postgres_data:/var/lib/postgresql/data
+      - ./postgres-backup/postgres-dump.sql:/docker-entrypoint-initdb.d/postgres-dump.sql
+
+volumes:
+  douane_postgres_data:

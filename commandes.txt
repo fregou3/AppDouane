@@ -1,0 +1,76 @@
+# Avec nom de fichier automatique (timestamp)
+./docker-backup-db.sh
+
+# Avec nom de fichier personnalisé
+./docker-backup-db.sh mon_backup
+
+./docker-restore-db.sh backups/douane_backup_20250324_110000.dmp
+
+REM Pour sauvegarder (nom de fichier automatique)
+backup-restore-db.bat backup
+
+REM Pour sauvegarder avec nom personnalisé
+backup-restore-db.bat backup mon_backup.dump
+
+REM Pour restaurer
+backup-restore-db.bat restore mon_backup.dump
+
+# NOUVELLES COMMANDES POWERSHELL (RECOMMANDÉES POUR WINDOWS)
+
+# Pour sauvegarder avec nom de fichier automatique (timestamp)
+.\Backup-DB.ps1
+
+# Pour sauvegarder avec nom personnalisé
+.\Backup-DB.ps1 douane_24032025_11h18
+
+# Pour restaurer
+.\Restore-DB.ps1 douane_24032025_11h18.dmp
+
+# INITIALISATION DE LA BASE DE DONNÉES
+
+# Pour initialiser la base de données avec le fichier SQL par défaut
+.\Init-DB.ps1
+
+# Pour initialiser la base de données avec un fichier SQL spécifique
+.\Init-DB.ps1 chemin\vers\fichier.sql
+
+# RESTAURATION D'UNE SAUVEGARDE CRÉÉE SOUS LINUX
+
+# Pour restaurer une sauvegarde créée sous Linux
+.\Restore-Linux-Backup.ps1 douane_backup_20250324_104034.dmp
+
+# SAUVEGARDE ET IMPORTATION EN FORMAT SQL (COMPATIBLE LINUX/WINDOWS)
+
+# Pour sauvegarder en format SQL sur Linux
+./linux-backup-sql.sh douane_sql_backup.sql
+
+# Pour importer un fichier SQL sur Windows
+.\Import-SQL.ps1 douane_sql_backup.sql
+
+# REMARQUE SUR LES FORMATS DE SAUVEGARDE
+# Les scripts de sauvegarde (Backup-DB.ps1 et docker-backup-db.sh) créent maintenant deux fichiers :
+# - Un fichier .dmp (format binaire) pour une restauration rapide sur le même système
+# - Un fichier .sql (format texte) pour une compatibilité maximale entre Linux et Windows
+
+
+
+cd C:\App\douane_V3_1.0\douane_v3.9.5\backend
+node server.js
+
+cd C:\App\douane_V3_1.0\douane_v3.9.5\backend
+node standalone-pdf-server.js
+
+
+taskkill /F /IM node.exe
+
+node image-server.js
+
+node standalone-pdf-server.js
+
+cd C:\App\douane_V3_1.0\douane_v3.9.10; npm install dotenv express cors multer openai
+
+cd C:\App\douane_V3_1.0\douane_v3.9.10; node image-server.js
+
+Backend principal sur le port 5004
+Serveur d'analyse de PDF sur le port 5005
+Serveur d'image sur le port 5006

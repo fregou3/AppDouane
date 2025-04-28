@@ -1,0 +1,1807 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { API_URL } from '../config';
+import ReactFlow, { 
+  Controls, 
+  Background,
+  useNodesState,
+  useEdgesState
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControl,
+  Grid,
+  InputLabel,
+  List,
+  ListItem,
+  ListItemText,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography
+} from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+
+const Analyse = () => {
+  const [produitsFinis, setProduitsFinis] = useState([]);
+  const [selectedProduit, setSelectedProduit] = useState('');
+  const [analyseData, setAnalyseData] = useState(null);
+  const [showGraph, setShowGraph] = useState(false);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedElement, setSelectedElement] = useState(null);
+  const [selectedElementDetails, setSelectedElementDetails] = useState(null);
+  const [elementDocuments, setElementDocuments] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [analysesBonLivraison, setAnalysesBonLivraison] = useState({});
+  const [analysesBulletinAnalyse, setAnalysesBulletinAnalyse] = useState({});
+  const [openBonLivraison, setOpenBonLivraison] = useState(false);
+  const [openBulletinAnalyse, setOpenBulletinAnalyse] = useState(false);
+  const [loadingBonLivraison, setLoadingBonLivraison] = useState(false);
+  const [loadingBulletinAnalyse, setLoadingBulletinAnalyse] = useState(false);
+  const [analyseBonLivraison, setAnalyseBonLivraison] = useState(null);
+  const [analyseBulletinAnalyse, setAnalyseBulletinAnalyse] = useState(null);
+  const [semiFinisRef, setSemiFinisRef] = useState({});
+  const [plantesRef, setPlantesRef] = useState({});
+  const [extraitsRef, setExtraitsRef] = useState({});
+  const [produitsFinisRef, setProduitsFinisRef] = useState({});
+  const [simpleTableContent, setSimpleTableContent] = useState(null);
+
+  // Charger la liste des produits finis
+  useEffect(() => {
+    const fetchProduitsFinis = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/produits-finis`);
+        setProduitsFinis(response.data);
+      } catch (error) {
+        console.error('Erreur lors du chargement des produits finis:', error);
+      }
+    };
+    fetchProduitsFinis();
+  }, []);
+
+  // Charger le référentiel des semi-finis
+  useEffect(() => {
+    const fetchSemiFinisRef = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/semi-finis`);
+        console.log('Semi-finis reference data:', response.data);
+        
+        // Trouver et afficher spécifiquement le semi-fini S8839
+        const s8839 = response.data.find(sf => sf.lot === 'S8839');
+        console.log('Semi-fini S8839 from reference:', s8839);
+        
+        const refMap = {};
+        response.data.forEach(sf => {
+          refMap[sf.lot] = sf;
+        });
+        console.log('Semi-finis reference map:', refMap);
+        setSemiFinisRef(refMap);
+      } catch (error) {
+        console.error('Erreur lors du chargement du référentiel des semi-finis:', error);
+      }
+    };
+    fetchSemiFinisRef();
+  }, []);
+
+  // Charger le référentiel des plantes
+  useEffect(() => {
+    const fetchPlantesRef = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/matieres-premieres?type=plante`);
+        console.log('Réponse API plantes:', response.data);
+        
+        // Vérifier la structure de la réponse et accéder au tableau de données
+        const plantesData = response.data.data || response.data;
+        
+        if (!Array.isArray(plantesData)) {
+          console.error('Les données des plantes ne sont pas un tableau:', plantesData);
+          return;
+        }
+        
+        const refMap = {};
+        plantesData.forEach(p => {
+          refMap[p.lot] = p;
+        });
+        console.log('Référentiel des plantes créé:', refMap);
+        setPlantesRef(refMap);
+      } catch (error) {
+        console.error('Erreur lors du chargement du référentiel des plantes:', error);
+      }
+    };
+    fetchPlantesRef();
+  }, []);
+
+  // Charger le référentiel des extraits
+  useEffect(() => {
+    const fetchExtraitsRef = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/matieres-premieres?type=extrait`);
+        console.log('Réponse API extraits:', response.data);
+        
+        // Vérifier la structure de la réponse et accéder au tableau de données
+        const extraitsData = response.data.data || response.data;
+        
+        if (!Array.isArray(extraitsData)) {
+          console.error('Les données des extraits ne sont pas un tableau:', extraitsData);
+          return;
+        }
+        
+        const refMap = {};
+        extraitsData.forEach(e => {
+          refMap[e.lot] = e;
+        });
+        console.log('Référentiel des extraits créé:', refMap);
+        setExtraitsRef(refMap);
+      } catch (error) {
+        console.error('Erreur lors du chargement du référentiel des extraits:', error);
+      }
+    };
+    fetchExtraitsRef();
+  }, []);
+
+  // Charger le référentiel des produits finis
+  useEffect(() => {
+    const fetchProduitsFinis = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/produits-finis`);
+        console.log('Produits finis reference data:', response.data);
+        const refMap = {};
+        response.data.forEach(pf => {
+          refMap[pf.lot_number] = pf;
+        });
+        console.log('Produits finis reference map:', refMap);
+        setProduitsFinisRef(refMap);
+      } catch (error) {
+        console.error('Erreur lors du chargement du référentiel des produits finis:', error);
+      }
+    };
+    fetchProduitsFinis();
+  }, []);
+
+  // Gérer le changement de produit sélectionné
+  const handleProduitChange = (event) => {
+    setSelectedProduit(event.target.value);
+    setAnalyseData(null);
+    setShowGraph(false);
+  };
+
+  // Lancer l'analyse
+  const handleAnalyse = async () => {
+    if (!selectedProduit) return;
+
+    try {
+      const response = await axios.get(`${API_URL}/api/trace-produit-fini/${selectedProduit}`);
+      console.log('Données reçues:', JSON.stringify(response.data, null, 2));
+      setAnalyseData(response.data);
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse:', error);
+    }
+  };
+
+  const formatValue = (value) => {
+    if (value === null || value === undefined) return '-';
+    return `${value} €`;
+  };
+
+  // Fonction pour formater l'affichage des transformations
+  const renderTransformations = (transformations) => {
+    if (!transformations || transformations.length === 0) return '-';
+    return (
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        {transformations.map((trans, idx) => (
+          <Chip 
+            key={idx} 
+            label={trans} 
+            size="small" 
+            color="primary" 
+            variant="outlined"
+          />
+        ))}
+      </Stack>
+    );
+  };
+
+  // Fonction pour formater le nom du document
+  const formatDocumentType = (type) => {
+    const typeMap = {
+      'bon_livraison': 'Bon de livraison',
+      'bulletin_analyse': 'Bulletin d\'analyse',
+      'certificat': 'Certificat'
+    };
+    return typeMap[type] || type;
+  };
+
+  // Fonction pour obtenir les données enrichies d'une plante depuis le référentiel
+  const getEnrichedPlanteData = useCallback((planteData) => {
+    if (!planteData || !planteData.lot) return null;
+    
+    const planteRef = Object.values(plantesRef).find(p => p.lot === planteData.lot);
+    console.log('Found plante in reference:', planteRef);
+    
+    if (planteRef) {
+      return {
+        ...planteData,
+        type: 'plante',
+        transformations: planteData.transformations || [],
+        nom: planteRef.nom || planteData.nom,
+        pays_origine: planteRef.pays_origine || '-',
+        valeur: planteRef.valeur || '-',
+        code_douanier: planteRef.code_douanier || '-'
+      };
+    }
+    return {
+      ...planteData,
+      type: 'plante',
+      transformations: planteData.transformations || []
+    };
+  }, [plantesRef]);
+
+  // Fonction pour obtenir les données enrichies d'un extrait depuis le référentiel
+  const getEnrichedExtraitData = useCallback((extraitData) => {
+    if (!extraitData || !extraitData.lot) return null;
+    
+    const extraitRef = Object.values(extraitsRef).find(e => e.lot === extraitData.lot);
+    console.log('Found extrait in reference:', extraitRef);
+    
+    if (extraitRef) {
+      return {
+        ...extraitData,
+        type: 'extrait',
+        transformations: extraitData.transformations || [],
+        nom: extraitRef.nom || extraitData.nom,
+        pays_origine: extraitRef.pays_origine || '-',
+        valeur: extraitRef.valeur || '-',
+        code_douanier: extraitRef.code_douanier || '-'
+      };
+    }
+    return {
+      ...extraitData,
+      type: 'extrait',
+      transformations: extraitData.transformations || []
+    };
+  }, [extraitsRef]);
+
+  // Fonction pour obtenir les données enrichies d'une sauce depuis le référentiel
+  const getEnrichedSauceData = useCallback((sauceData) => {
+    if (!sauceData || !sauceData.lot_number) {
+      console.log('Invalid sauce data:', sauceData);
+      return null;
+    }
+    
+    console.log('Looking for sauce lot:', sauceData.lot_number);
+    console.log('Semi-finis reference:', semiFinisRef);
+    
+    const sauceRef = Object.values(semiFinisRef).find(sf => sf.lot_number === sauceData.lot_number);
+    console.log('Found sauce reference:', sauceRef);
+    
+    if (sauceRef) {
+      const enrichedData = {
+        id: sauceData.id,
+        type: 'sauce',
+        transformations: sauceData.transformations || [],
+        nom: sauceRef.nom || sauceData.nom,
+        lot_number: sauceData.lot_number,
+        valeur: sauceRef.valeur,
+        code_douanier: sauceRef.code_douanier,
+        pays_origine: sauceRef.pays_origine,
+        matieres_premieres: Array.isArray(sauceRef.matieres_premieres) && sauceRef.matieres_premieres[0] !== null 
+          ? sauceRef.matieres_premieres 
+          : []
+      };
+      console.log('Enriched sauce data:', enrichedData);
+      return enrichedData;
+    }
+
+    console.log('No reference found for sauce:', sauceData);
+    return {
+      ...sauceData,
+      type: 'sauce',
+      transformations: sauceData.transformations || [],
+      valeur: '-',
+      code_douanier: '-',
+      pays_origine: '-',
+      matieres_premieres: []
+    };
+  }, [semiFinisRef]);
+
+  // Fonction pour obtenir les données enrichies d'un produit fini depuis le référentiel
+  const getEnrichedProduitFiniData = useCallback((produitFiniData) => {
+    if (!produitFiniData || !produitFiniData.lot_number) {
+      console.log('Invalid produit fini data:', produitFiniData);
+      return null;
+    }
+    
+    console.log('Looking for produit fini lot:', produitFiniData.lot_number);
+    console.log('Produits finis reference:', produitsFinisRef);
+    
+    const produitFiniRef = Object.values(produitsFinisRef).find(pf => pf.lot_number === produitFiniData.lot_number);
+    console.log('Found produit fini reference:', produitFiniRef);
+    
+    if (produitFiniRef) {
+      const enrichedData = {
+        id: produitFiniData.id,
+        type: 'produit_fini',
+        transformations: produitFiniData.transformations || [],
+        nom: produitFiniRef.nom || produitFiniData.nom,
+        lot: produitFiniRef.lot_number,
+        pays_origine: produitFiniRef.pays_origine,
+        valeur: produitFiniRef.valeur,
+        code_douanier: produitFiniRef.code_douanier,
+        sauce_nom: produitFiniRef.sauce_nom,
+        sauce_lot: produitFiniRef.sauce_lot_number
+      };
+      console.log('Enriched produit fini data:', enrichedData);
+      return enrichedData;
+    }
+
+    console.log('Using direct produit fini data:', produitFiniData);
+    return {
+      id: produitFiniData.id,
+      type: 'produit_fini',
+      transformations: produitFiniData.transformations || [],
+      nom: produitFiniData.nom,
+      lot: produitFiniData.lot_number,
+      pays_origine: produitFiniData.pays_origine,
+      valeur: produitFiniData.valeur,
+      code_douanier: produitFiniData.code_douanier,
+      sauce_nom: produitFiniData.sauce_nom,
+      sauce_lot: produitFiniData.sauce_lot_number
+    };
+  }, [produitsFinisRef]);
+
+  // Créer les données du graphique
+  const createGraphData = useCallback(() => {
+    if (!analyseData) return { nodes: [], edges: [] };
+
+    const nodes = [];
+    const edges = [];
+    let nodeId = 0;
+
+    // Trier les matières premières comme dans le tableau
+    const sortedMatieresPremiere = [...analyseData.matieres_premieres].sort((a, b) => {
+      if (a.type === 'plante' && b.type === 'extrait') return -1;
+      if (a.type === 'extrait' && b.type === 'plante') return 1;
+      return 0;
+    });
+
+    // Séparer les plantes et les extraits
+    const plantes = sortedMatieresPremiere.filter(mp => mp.type === 'plante');
+    const extraits = sortedMatieresPremiere.filter(mp => mp.type === 'extrait');
+
+    // Map pour stocker les IDs des nœuds par lot
+    const nodeIds = new Map();
+
+    // Ajouter les plantes (niveau le plus haut)
+    plantes.forEach((plante, index) => {
+      const mpId = nodeId++;
+      const xOffset = (index - (plantes.length - 1) / 2) * 200;
+      
+      nodes.push({
+        id: mpId.toString(),
+        data: { label: plante.nom },
+        position: { x: xOffset, y: 0 },
+        type: 'default',
+        style: { background: '#f3e5f5', border: '1px solid #7b1fa2' }
+      });
+
+      // Stocker l'ID du nœud pour cette plante avec son lot
+      nodeIds.set(plante.lot, mpId.toString());
+    });
+
+    // Ajouter les extraits (niveau en-dessous des plantes)
+    extraits.forEach((extrait, index) => {
+      const mpId = nodeId++;
+      const xOffset = (index - (extraits.length - 1) / 2) * 200;
+      
+      nodes.push({
+        id: mpId.toString(),
+        data: { label: extrait.nom },
+        position: { x: xOffset, y: 100 },
+        type: 'default',
+        style: { background: '#e8f5e9', border: '1px solid #2e7d32' }
+      });
+
+      // Connecter l'extrait à sa plante source en utilisant le lot
+      if (extrait.matiere_premiere_source) {
+        const planteId = nodeIds.get(extrait.matiere_premiere_source);
+        if (planteId) {
+          edges.push({
+            id: `e${planteId}-${mpId}`,
+            source: planteId,
+            target: mpId.toString(),
+            type: 'default'
+          });
+        }
+      }
+
+      // Connecter l'extrait à la sauce
+      if (analyseData.sauce) {
+        edges.push({
+          id: `e${mpId}-sauce`,
+          source: mpId.toString(),
+          target: 'sauce',
+          type: 'default'
+        });
+      }
+    });
+
+    // Ajouter la sauce
+    if (analyseData.sauce) {
+      nodes.push({
+        id: 'sauce',
+        data: { label: analyseData.sauce.nom },
+        position: { x: 0, y: 200 },
+        type: 'default',
+        style: { background: '#fff3e0', border: '1px solid #ed6c02' }
+      });
+
+      edges.push({
+        id: 'e-sauce-produit',
+        source: 'sauce',
+        target: 'produit',
+        type: 'default'
+      });
+    }
+
+    // Ajouter le produit fini (niveau le plus bas)
+    nodes.push({
+      id: 'produit',
+      data: { label: analyseData.produit_fini.nom },
+      position: { x: 0, y: 300 },
+      type: 'default',
+      style: { background: '#e3f2fd', border: '1px solid #1565c0' }
+    });
+
+    return { nodes, edges };
+  }, [analyseData]);
+
+  // Mettre à jour les nœuds et les arêtes quand les données changent
+  useEffect(() => {
+    if (analyseData) {
+      const { nodes, edges } = createGraphData();
+      setNodes(nodes);
+      setEdges(edges);
+    }
+  }, [analyseData, createGraphData, setNodes, setEdges]);
+
+  // Style pour le graphique
+  const graphStyles = {
+    width: '100%',
+    height: '500px',
+    background: '#f8f8f8'
+  };
+
+  // Configuration du graphique
+  const defaultEdgeOptions = {
+    style: { strokeWidth: 1 },
+    markerEnd: { type: 'arrowclosed' },
+    animated: false
+  };
+
+  // Fonction pour récupérer les détails d'une matière première
+  const fetchMatierePremiereDetails = async (id) => {
+    try {
+      console.log('Récupération des détails pour la matière première:', id);
+      const response = await axios.get(`${API_URL}/api/matieres-premieres/${id}`);
+      console.log('Détails reçus:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des détails de la matière première:', error);
+      return null;
+    }
+  };
+
+  // Fonction pour récupérer les documents d'un élément
+  const fetchElementDocuments = async (elementType, elementId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/documents/${elementType}/${elementId}`);
+      console.log('Documents reçus de l\'API:', response.data);
+      // Assurons-nous que nous avons un tableau de documents
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Erreur lors de la récupération des documents:', error);
+      return [];
+    }
+  };
+
+  // Fonction pour afficher les documents
+  // const renderDocuments = (documents) => {
+  //   if (!documents) return null;
+
+  //   return (
+  //     <Box>
+  //       <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>Documents reçus :</Typography>
+  //       {documents.recus.length > 0 ? (
+  //         <List dense>
+  //           {documents.recus.map((doc, index) => (
+  //             <ListItem key={index}>
+  //               <ListItemText 
+  //                 primary={formatDocumentType(doc.type_document)}
+  //                 secondary={
+  //                   <Box>
+  //                     <Typography variant="body2" component="div" sx={{ mb: 0.5 }}>
+  //                       {getFileName(doc.fichier_path)}
+  //                     </Typography>
+  //                     <Typography variant="body2" component="div" sx={{ mb: 0.5, color: 'text.secondary' }}>
+  //                       Type : {doc.type}
+  //                     </Typography>
+  //                     Status : <Chip 
+  //                       label={doc.status} 
+  //                       size="small"
+  //                       color={doc.status === 'valide' ? 'success' : doc.status === 'rejete' ? 'error' : 'default'}
+  //                       sx={{ mr: 1 }}
+  //                     />
+  //                     {doc.date_reception && `Reçu le ${new Date(doc.date_reception).toLocaleDateString()}`}
+  //                   </Box>
+  //                 }
+  //               />
+  //               <Button
+  //                 variant="outlined"
+  //                 size="small"
+  //                 onClick={() => handleShowAnalysis(doc)}
+  //                 sx={{ ml: 1 }}
+  //               >
+  //                 Voir analyse
+  //               </Button>
+  //             </ListItem>
+  //           ))}
+  //         </List>
+  //       ) : (
+  //         <Typography variant="body2" color="text.secondary">Aucun document reçu</Typography>
+  //       )}
+        
+  //       <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>Documents manquants :</Typography>
+  //       {documents.manquants.length > 0 ? (
+  //         <List dense>
+  //           {documents.manquants.map((doc, index) => (
+  //             <ListItem key={index}>
+  //               <ListItemText 
+  //                 primary={formatDocumentType(doc.type_document)}
+  //                 sx={{ color: 'error.main' }}
+  //               />
+  //             </ListItem>
+  //           ))}
+  //         </List>
+  //       ) : (
+  //         <Typography variant="body2" color="success.main">Tous les documents sont présents</Typography>
+  //       )}
+  //     </Box>
+  //   );
+  // };
+
+  // Gérer la sélection d'un élément
+  const handleElementClick = useCallback(async (event, element) => {
+    setIsLoadingDetails(true);
+    setSelectedElement(element);
+    
+    try {
+      // Déterminer le type et l'ID de l'élément sélectionné
+      let elementType, elementId;
+      
+      if (element.id.startsWith('plante-')) {
+        elementType = 'plante';
+        elementId = element.id.replace('plante-', '');
+      } else if (element.id.startsWith('extrait-')) {
+        elementType = 'extrait';
+        elementId = element.id.replace('extrait-', '');
+      } else if (element.id === 'sauce') {
+        elementType = 'sauce';
+        elementId = analyseData?.sauce?.id;
+      } else if (element.id === 'produit-fini') {
+        elementType = 'produit';
+        elementId = analyseData?.id;
+      }
+
+      // Récupérer les documents si on a un type et un ID valide
+      if (elementType && elementId && !isNaN(elementId)) {
+        console.log(`Récupération des documents pour ${elementType} avec l'ID ${elementId}`);
+        const documents = await fetchElementDocuments(elementType, elementId);
+        setElementDocuments(documents);
+      } else {
+        console.log(`Type ou ID non valide : type=${elementType}, id=${elementId}`);
+        setElementDocuments(null);
+      }
+
+      // Récupérer les détails de l'élément sélectionné
+      setSelectedElementDetails(element);
+    } catch (error) {
+      console.error('Erreur lors de la sélection de l\'élément:', error);
+      setElementDocuments(null);
+      setSelectedElementDetails(null);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }, [analyseData]);
+
+  // Fonction pour formater les données d'analyse
+  const formatAnalyseData = (data, type_document) => {
+    const fields = {};
+    const expectedFields = type_document === 'bon_livraison' ? {
+      date_document: 'date',
+      nom_fournisseur: 'nom du fournisseur',
+      nom_matiere_premiere: 'nom de la matière première',
+      numero_bl: 'numéro du bon de livraison',
+      adresse_depart: 'adresse de départ',
+      adresse_destination: 'adresse de destination',
+      poids_colis: 'poids du colis',
+      mode_transport: 'mode de transport'
+    } : {
+      date_document: 'date',
+      nom_fournisseur: 'nom du fournisseur',
+      numero_lot: 'numéro du lot',
+      numero_commande: 'numéro de commande',
+      nom_matiere_premiere: 'nom de la matière première',
+      caracteristiques_matiere: 'caractéristique de la matière première'
+    };
+
+    // Créer l'objet fields avec les valeurs de la base de données
+    Object.entries(expectedFields).forEach(([key, name]) => {
+      fields[key] = {
+        name,
+        present: data[key] || false
+      };
+    });
+
+    // Calculer le ratio de conformité si non fourni
+    const presentCount = Object.values(fields).filter(field => field.present).length;
+    const ratio = presentCount / Object.keys(fields).length;
+
+    return {
+      ...data,
+      fields,
+      ratio_conformite: data.ratio_conformite || ratio
+    };
+  };
+
+  // Fonction pour analyser un document
+  const analyzeDocument = async (document) => {
+    const isLivraison = document.type_document === 'bon_livraison';
+    
+    if (isLivraison) {
+      setLoadingBonLivraison(true);
+      setOpenBonLivraison(true);
+    } else {
+      setLoadingBulletinAnalyse(true);
+      setOpenBulletinAnalyse(true);
+    }
+
+    try {
+      // Appeler l'API d'analyse
+      const analyzeResponse = await axios.post(`${API_URL}/api/conformite/analyze`, {
+        fichier_path: document.fichier_path,
+        type_document: document.type_document,
+        document_id: document.id,
+        matiere_premiere_id: document.matiere_premiere_id
+      });
+
+      if (analyzeResponse.data) {
+        const formattedData = formatAnalyseData(analyzeResponse.data, document.type_document);
+        console.log('Résultat de l\'analyse:', formattedData);
+
+        if (isLivraison) {
+          setAnalysesBonLivraison(prev => ({
+            ...prev,
+            [document.id]: formattedData
+          }));
+          setAnalyseBonLivraison(formattedData);
+        } else {
+          setAnalysesBulletinAnalyse(prev => ({
+            ...prev,
+            [document.id]: formattedData
+          }));
+          setAnalyseBulletinAnalyse(formattedData);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse:', error);
+      const errorResult = {
+        error: true,
+        message: error.response?.data?.error || 'Une erreur est survenue lors de l\'analyse du document.',
+        filename: document.fichier_path
+      };
+      if (isLivraison) {
+        setAnalyseBonLivraison(errorResult);
+      } else {
+        setAnalyseBulletinAnalyse(errorResult);
+      }
+    } finally {
+      if (isLivraison) {
+        setLoadingBonLivraison(false);
+      } else {
+        setLoadingBulletinAnalyse(false);
+      }
+    }
+  };
+
+  // Fonction pour récupérer l'analyse d'un document
+  const fetchDocumentAnalyse = async (document) => {
+    const isLivraison = document.type_document === 'bon_livraison';
+    
+    if (isLivraison) {
+      setLoadingBonLivraison(true);
+      setOpenBonLivraison(true);
+    } else {
+      setLoadingBulletinAnalyse(true);
+      setOpenBulletinAnalyse(true);
+    }
+
+    try {
+      // Utiliser la même API que la page Conformité
+      const analyseResponse = await axios.get(`${API_URL}/api/conformite/analyse/${document.type_document}/${document.id}`);
+      
+      if (analyseResponse.data) {
+        const formattedData = formatAnalyseData(analyseResponse.data, document.type_document);
+        console.log('Données d\'analyse formatées:', formattedData);
+
+        if (isLivraison) {
+          setAnalysesBonLivraison(prev => ({
+            ...prev,
+            [document.id]: formattedData
+          }));
+          setAnalyseBonLivraison(formattedData);
+        } else {
+          setAnalysesBulletinAnalyse(prev => ({
+            ...prev,
+            [document.id]: formattedData
+          }));
+          setAnalyseBulletinAnalyse(formattedData);
+        }
+      } else {
+        throw new Error('Aucune analyse trouvée');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'analyse:', error);
+      const errorResult = {
+        error: true,
+        message: 'Aucune analyse n\'a été effectuée pour ce document. Veuillez d\'abord analyser le document dans l\'onglet Conformité.',
+        filename: document.fichier_path
+      };
+      if (isLivraison) {
+        setAnalyseBonLivraison(errorResult);
+      } else {
+        setAnalyseBulletinAnalyse(errorResult);
+      }
+    } finally {
+      if (isLivraison) {
+        setLoadingBonLivraison(false);
+      } else {
+        setLoadingBulletinAnalyse(false);
+      }
+    }
+  };
+
+  // Fonction pour afficher l'analyse d'un document
+  const handleShowAnalysis = async (document) => {
+    console.log('Affichage de l\'analyse pour:', document);
+    const isLivraison = document.type_document === 'bon_livraison';
+    
+    if (isLivraison) {
+      const analyse = analysesBonLivraison[document.id];
+      console.log('Analyse bon de livraison trouvée:', analyse);
+      if (analyse) {
+        setAnalyseBonLivraison(analyse);
+        setOpenBonLivraison(true);
+      } else {
+        await fetchDocumentAnalyse(document);
+      }
+    } else {
+      const analyse = analysesBulletinAnalyse[document.id];
+      console.log('Analyse bulletin d\'analyse trouvée:', analyse);
+      if (analyse) {
+        setAnalyseBulletinAnalyse(analyse);
+        setOpenBulletinAnalyse(true);
+      } else {
+        await fetchDocumentAnalyse(document);
+      }
+    }
+  };
+
+  // Fonction pour extraire le nom du fichier du chemin complet
+  const getFileName = (path) => {
+    if (!path) return '';
+    return path.split('/').pop();
+  };
+
+  // Fonction pour obtenir le titre du document
+  const getDocumentTitle = (type) => {
+    switch (type) {
+      case 'bon_livraison':
+        return 'Bon de livraison';
+      case 'bulletin_analyse':
+        return 'Bulletin d\'analyse';
+      default:
+        return 'Document';
+    }
+  };
+
+  // Fonction pour afficher le dialogue d'analyse
+  const renderAnalyseDialog = (type, document) => {
+    const isLivraison = type === 'bon_livraison';
+    const analyse = isLivraison ? analyseBonLivraison : analyseBulletinAnalyse;
+    const loading = isLivraison ? loadingBonLivraison : loadingBulletinAnalyse;
+    const open = isLivraison ? openBonLivraison : openBulletinAnalyse;
+    const handleClose = () => {
+      if (isLivraison) {
+        setOpenBonLivraison(false);
+        setAnalyseBonLivraison(null);
+      } else {
+        setOpenBulletinAnalyse(false);
+        setAnalyseBulletinAnalyse(null);
+      }
+    };
+
+    return (
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Analyse du document : {document?.type}
+          {document && (
+            <Typography variant="subtitle1" color="text.secondary" sx={{ mt: 1 }}>
+              Fichier : {getFileName(document.fichier_path)}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {loading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+              <CircularProgress />
+            </Box>
+          ) : analyse?.error ? (
+            <Box>
+              <DialogContentText color="error">
+                {analyse.message}
+              </DialogContentText>
+              <Box mt={2} display="flex" justifyContent="center">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => analyzeDocument(document)}
+                >
+                  Analyser maintenant
+                </Button>
+              </Box>
+            </Box>
+          ) : analyse ? (
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Ratio de conformité: {(analyse.ratio_conformite * 100).toFixed(1)}%
+              </Typography>
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Information requise</TableCell>
+                      <TableCell align="center">État</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {Object.entries(analyse.fields).map(([key, field]) => (
+                      <TableRow key={key}>
+                        <TableCell>{field.name}</TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={field.present ? 'Présent' : 'Absent'}
+                            color={field.present ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {analyse.resume && (
+                <Box mt={2}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Résumé de l'analyse:
+                  </Typography>
+                  <Typography variant="body2">
+                    {analyse.resume}
+                  </Typography>
+                </Box>
+              )}
+              <Box mt={2}>
+                <Typography variant="body2" color="text.secondary">
+                  {Object.values(analyse.fields).filter(f => f.present).length} information{Object.values(analyse.fields).filter(f => f.present).length > 1 ? 's' : ''} présente{Object.values(analyse.fields).filter(f => f.present).length > 1 ? 's' : ''} sur {Object.keys(analyse.fields).length} requise{Object.keys(analyse.fields).filter(f => f.present).length > 1 ? 's' : ''}
+                </Typography>
+              </Box>
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  // Fonction pour formater les données d'analyse
+  const renderAnalysisResult = (analysisResult) => {
+    if (!analysisResult) return null;
+    if (analysisResult.error) {
+      return (
+        <DialogContentText color="error">
+          {analysisResult.message}
+          <br />
+          Fichier: {analysisResult.filename}
+        </DialogContentText>
+      );
+    }
+
+    // Calculer le nombre de champs présents
+    const presentFields = Object.entries(analysisResult.fields || {}).filter(([_, field]) => field.present);
+    const totalFields = Object.keys(analysisResult.fields || {}).length;
+
+    return (
+      <>
+        <DialogContentText>
+          <strong>Fichier analysé :</strong> {analysisResult.fichier_path}
+        </DialogContentText>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            <strong>État des informations requises :</strong>
+          </Typography>
+          <Grid container spacing={1}>
+            {Object.entries(analysisResult.fields || {}).map(([key, field], index) => (
+              <Grid item key={index}>
+                <Chip
+                  label={field.name}
+                  color={field.present ? "success" : "error"}
+                  variant={field.present ? "filled" : "outlined"}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+        <DialogContentText sx={{ mt: 3 }}>
+          <strong>Résumé :</strong>
+          <br />
+          {analysisResult.resume}
+        </DialogContentText>
+        <DialogContentText sx={{ mt: 2 }}>
+          <strong>Ratio de conformité :</strong> {((analysisResult.ratio_conformite || 0) * 100).toFixed(1)}%
+          ({presentFields.length}/{totalFields} informations présentes)
+        </DialogContentText>
+      </>
+    );
+  };
+
+  const handleCloseBonLivraison = () => {
+    setOpenBonLivraison(false);
+    setAnalyseBonLivraison(null);
+  };
+
+  const handleCloseBulletinAnalyse = () => {
+    setOpenBulletinAnalyse(false);
+    setAnalyseBulletinAnalyse(null);
+  };
+
+  const renderAnalysisModals = () => (
+    <>
+      <Dialog
+        open={openBonLivraison}
+        onClose={handleCloseBonLivraison}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Analyse du bon de livraison
+        </DialogTitle>
+        <DialogContent>
+          {loadingBonLivraison ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            renderAnalysisResult(analyseBonLivraison)
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBonLivraison}>
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openBulletinAnalyse}
+        onClose={handleCloseBulletinAnalyse}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Analyse du bulletin d'analyse
+        </DialogTitle>
+        <DialogContent>
+          {loadingBulletinAnalyse ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            renderAnalysisResult(analyseBulletinAnalyse)
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBulletinAnalyse}>
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+
+  const getElementDetails = () => {
+    console.log('Selected Element:', selectedElement);
+    console.log('Selected Element Details:', selectedElementDetails);
+    console.log('Element Documents:', elementDocuments);
+    console.log('Semi-finis Ref:', semiFinisRef);
+
+    if (!selectedElement || !selectedElementDetails) return {};
+
+    const element = selectedElementDetails;
+    const elementType = selectedElement.id.split('-')[0];
+
+    console.log('Element Type:', elementType);
+    console.log('Element Data:', element);
+
+    // Détails communs pour tous les types
+    const details = {
+      'Type': elementType === 'plante' ? 'Plante' :
+             elementType === 'extrait' ? 'Extrait' :
+             elementType === 'transformation' ? 'Transformation' :
+             elementType === 'sauce' ? 'Semi-fini' : 'Inconnu',
+      'Nom': element.nom || '-',
+      'Lot': element.lot_number || element.lot || '-'
+    };
+
+    // Détails spécifiques selon le type
+    if (elementType === 'plante' || elementType === 'extrait') {
+      details['Pays d\'origine'] = element.pays_origine || '-';
+      details['Valeur'] = formatValue(element.valeur);
+      details['Code douanier'] = element.code_douanier || '-';
+      details['Transformations'] = element.transformations?.length > 0 
+        ? element.transformations.join(', ') 
+        : '-';
+    } else if (elementType === 'transformation') {
+      details['Pays d\'origine'] = element.pays_origine || '-';
+      details['Valeur'] = formatValue(element.valeur);
+      details['Code douanier'] = element.code_douanier || '-';
+      details['Composition'] = element.matieres_premieres?.map(m => m.nom).join(', ') || '-';
+      if (element.sauce) {
+        const enrichedSauce = getEnrichedSauceData(element.sauce);
+        console.log('Sauce reference in transformation:', enrichedSauce);
+        if (enrichedSauce) {
+          details['Sauce'] = enrichedSauce.nom || '-';
+          details['Pays d\'origine de la sauce'] = enrichedSauce.pays_origine || '-';
+          details['Valeur de la sauce'] = formatValue(enrichedSauce.valeur);
+          details['Code douanier de la sauce'] = enrichedSauce.code_douanier || '-';
+        }
+      }
+    } else if (elementType === 'sauce') {
+      console.log('Processing sauce element:', element);
+      const enrichedSauce = getEnrichedSauceData(element);
+      console.log('Enriched sauce data:', enrichedSauce);
+      
+      if (enrichedSauce) {
+        details['Pays d\'origine'] = enrichedSauce.pays_origine || '-';
+        details['Valeur'] = formatValue(enrichedSauce.valeur);
+        details['Code douanier'] = enrichedSauce.code_douanier || '-';
+      } else {
+        details['Pays d\'origine'] = '-';
+        details['Valeur'] = '-';
+        details['Code douanier'] = '-';
+      }
+    } else if (elementType === 'produit-fini') {
+      details['Pays d\'origine'] = element.pays_origine || '-';
+      details['Valeur'] = formatValue(element.valeur);
+      details['Code douanier'] = element.code_douanier || '-';
+      details['Transformations'] = element.transformations?.length > 0 
+        ? element.transformations.join(', ') 
+        : '-';
+    }
+
+    console.log('Formatted Details:', details);
+    return details;
+  };
+
+  const getDocumentStatus = (itemOrDocType) => {
+    // Si on passe un type de document directement (utilisé dans le panel de détails)
+    if (typeof itemOrDocType === 'string') {
+      const docType = itemOrDocType;
+      console.log('Checking document status for:', docType);
+      console.log('Element documents:', elementDocuments);
+      
+      if (!elementDocuments) return { received: false, status: null };
+      
+      // Chercher dans les documents reçus
+      const doc = elementDocuments.recus?.find(d => d.type_document === docType);
+      console.log('Found document:', doc);
+      
+      // Vérifier si le document est manquant
+      const isManquant = elementDocuments.manquants?.some(d => d.type_document === docType);
+      console.log('Is document missing:', isManquant);
+      
+      return {
+        received: !!doc,
+        status: doc?.status || null,
+        date: doc?.date_reception || null,
+        doc: doc,
+        isRequired: isManquant || !!doc // Le document est requis s'il est manquant ou reçu
+      };
+    }
+    
+    // Si on passe un item (utilisé dans le tableau simple)
+    const item = itemOrDocType;
+    const docTypes = ['bon_livraison', 'bulletin_analyse', 'certificat'];
+    const documentsStatus = {
+      bon_livraison: { received: false, date: null, status: null },
+      bulletin_analyse: { received: false, date: null, status: null },
+      certificat: { received: false, date: null, status: null }
+    };
+
+    if (item && item.documents) {
+      item.documents.recus?.forEach(doc => {
+        if (docTypes.includes(doc.type_document)) {
+          documentsStatus[doc.type_document] = {
+            received: true,
+            date: doc.date_reception,
+            status: doc.status
+          };
+        }
+      });
+    }
+
+    return documentsStatus;
+  };
+
+  const getDocLabel = (type) => {
+    switch(type) {
+      case 'bon_livraison':
+        return 'Bon de livraison';
+      case 'bulletin_analyse':
+        return "Bulletin d'analyse";
+      case 'certificat':
+        return 'Certification';
+      default:
+        return type;
+    }
+  };
+
+  const renderDocumentCell = (documents) => {
+    const docTypes = ['bon_livraison', 'bulletin_analyse', 'certificat'];
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {docTypes.map(type => {
+          const status = documents[type];
+          return (
+            <Box 
+              key={type} 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                width: '100%',
+                height: '32px' // Hauteur fixe correspondant à la hauteur du bouton
+              }}
+            >
+              <Typography variant="body2">
+                {getDocLabel(type)}
+              </Typography>
+              {status.received ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" color="success.main" sx={{ fontWeight: 'medium' }}>
+                    Reçu
+                  </Typography>
+                  <CheckCircleIcon sx={{ color: 'success.main', fontSize: 16 }} />
+                </Box>
+              ) : (
+                <Typography variant="body2" color="error.main">
+                  Non reçu
+                </Typography>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  };
+
+  const enrichItemWithDocuments = async (item, type) => {
+    if (!item) return null;
+    
+    try {
+      let apiType;
+      switch (type) {
+        case 'plante':
+        case 'extrait':
+          apiType = 'matieres-premieres';
+          break;
+        case 'sauce':
+          apiType = 'semi-finis';
+          break;
+        case 'produit':
+          apiType = 'produits-finis';
+          break;
+        default:
+          console.error('Type non reconnu:', type);
+          return item;
+      }
+
+      const response = await axios.get(`${API_URL}/api/documents/${apiType}/${item.id}`);
+      return {
+        ...item,
+        documents: {
+          recus: response.data.filter(doc => doc.id !== null),
+          manquants: response.data.documentsManquants || []
+        }
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des documents:', error);
+      return item;
+    }
+  };
+
+  const renderSimpleTable = async () => {
+    if (!analyseData) return null;
+
+    const enrichedMatieresPremiere = await Promise.all(
+      analyseData.matieres_premieres
+        .map(mp => {
+          if (mp.type === 'plante') {
+            return getEnrichedPlanteData(mp);
+          } else if (mp.type === 'extrait') {
+            return getEnrichedExtraitData(mp);
+          }
+          return mp;
+        })
+        .filter(Boolean)
+        .map(mp => enrichItemWithDocuments(mp, mp.type))
+    );
+
+    const enrichedSauce = await enrichItemWithDocuments(
+      getEnrichedSauceData(analyseData.sauce),
+      'sauce'
+    );
+
+    const enrichedProduitFini = await enrichItemWithDocuments(
+      getEnrichedProduitFiniData(analyseData.produit_fini),
+      'produit'
+    );
+
+    // Trier pour avoir les plantes avant les extraits
+    enrichedMatieresPremiere.sort((a, b) => {
+      if (a.type === 'plante' && b.type === 'extrait') return -1;
+      if (a.type === 'extrait' && b.type === 'plante') return 1;
+      return 0;
+    });
+
+    return (
+      <TableContainer component={Paper} sx={{ mt: 3 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Type</TableCell>
+              <TableCell>Nom</TableCell>
+              <TableCell>Documents</TableCell>
+              <TableCell>Analyse</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {enrichedMatieresPremiere.map((mp) => (
+              <TableRow key={mp.id} sx={{ '& > td': { py: 2 } }}>
+                <TableCell>{mp.type === 'plante' ? 'Plante' : 'Extrait'}</TableCell>
+                <TableCell>{mp.nom}</TableCell>
+                <TableCell>
+                  {renderDocumentCell(getDocumentStatus(mp))}
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {Object.entries(getDocumentStatus(mp)).map(([docType, status]) => (
+                      <Box 
+                        key={docType} 
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center',
+                          height: '32px' // Même hauteur que les lignes de documents
+                        }}
+                      >
+                        {status.received && (
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={() => handleShowAnalysis(mp.documents.recus.find(d => d.type_document === docType))}
+                          >
+                            Voir analyse {getDocLabel(docType)}
+                          </Button>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+            {enrichedSauce && (
+              <TableRow>
+                <TableCell>Semi-fini</TableCell>
+                <TableCell>{enrichedSauce.nom}</TableCell>
+                <TableCell>
+                  {renderDocumentCell(getDocumentStatus(enrichedSauce))}
+                </TableCell>
+                <TableCell>
+                  {Object.entries(getDocumentStatus(enrichedSauce)).map(([docType, status]) => {
+                    if (status.received) {
+                      const doc = enrichedSauce.documents?.recus?.find(d => d.type_document === docType);
+                      if (doc) {
+                        return (
+                          <Button
+                            key={docType}
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={() => handleShowAnalysis(doc)}
+                          >
+                            Voir analyse {getDocLabel(docType)}
+                          </Button>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
+                </TableCell>
+              </TableRow>
+            )}
+            {enrichedProduitFini && (
+              <TableRow>
+                <TableCell>Produit fini</TableCell>
+                <TableCell>{enrichedProduitFini.nom}</TableCell>
+                <TableCell>
+                  {renderDocumentCell(getDocumentStatus(enrichedProduitFini))}
+                </TableCell>
+                <TableCell>
+                  {Object.entries(getDocumentStatus(enrichedProduitFini)).map(([docType, status]) => {
+                    if (status.received) {
+                      const doc = enrichedProduitFini.documents?.recus?.find(d => d.type_document === docType);
+                      if (doc) {
+                        return (
+                          <Button
+                            key={docType}
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={() => handleShowAnalysis(doc)}
+                          >
+                            Voir analyse {getDocLabel(docType)}
+                          </Button>
+                        );
+                      }
+                    }
+                    return null;
+                  })}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
+  const renderAnalyseTable = () => {
+    if (!analyseData) return null;
+
+    console.log('analyseData:', analyseData);
+    console.log('Transformations:', analyseData.transformations);
+
+    // Enrichir les données des matières premières
+    const enrichedMatieresPremiere = analyseData.matieres_premieres
+      .map(mp => {
+        if (mp.type === 'plante') {
+          return getEnrichedPlanteData(mp);
+        } else if (mp.type === 'extrait') {
+          return getEnrichedExtraitData(mp);
+        }
+        return mp;
+      })
+      .filter(Boolean)
+      // Trier pour avoir les plantes avant les extraits
+      .sort((a, b) => {
+        if (a.type === 'plante' && b.type === 'extrait') return -1;
+        if (a.type === 'extrait' && b.type === 'plante') return 1;
+        return 0;
+      });
+
+    console.log('Matières premières enrichies:', enrichedMatieresPremiere);
+
+    // Enrichir les données de la sauce
+    const enrichedSauce = getEnrichedSauceData(analyseData.sauce);
+    console.log('Sauce enrichie:', enrichedSauce);
+
+    // Enrichir les données du produit fini
+    const enrichedProduitFini = getEnrichedProduitFiniData(analyseData.produit_fini);
+    console.log('Produit fini enrichi:', enrichedProduitFini);
+
+    return (
+      <TableContainer component={Paper} sx={{ mt: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Type</TableCell>
+              <TableCell>Nom</TableCell>
+              <TableCell>Lot</TableCell>
+              <TableCell>Pays d'origine</TableCell>
+              <TableCell>Valeur (€)</TableCell>
+              <TableCell>Code douanier</TableCell>
+              <TableCell>Matières premières</TableCell>
+              <TableCell>Transformations</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {/* Matières premières enrichies */}
+            {enrichedMatieresPremiere && enrichedMatieresPremiere.map((mp) => (
+              <TableRow key={mp.id}>
+                <TableCell>{mp.type === 'plante' ? 'Plante' : 'Extrait'}</TableCell>
+                <TableCell>{mp.nom}</TableCell>
+                <TableCell>{mp.lot}</TableCell>
+                <TableCell>{mp.pays_origine}</TableCell>
+                <TableCell>{formatValue(mp.valeur)}</TableCell>
+                <TableCell>{mp.code_douanier}</TableCell>
+                <TableCell>
+                  {mp.type === 'extrait' && mp.matiere_premiere_source ? 
+                    enrichedMatieresPremiere
+                      .filter(p => p.type === 'plante' && p.lot === mp.matiere_premiere_source)
+                      .map(p => p.nom)
+                      .join(', ') 
+                    : '-'}
+                </TableCell>
+                <TableCell>{mp.transformations && mp.transformations.length > 0 ? mp.transformations.join(', ') : '-'}</TableCell>
+              </TableRow>
+            ))}
+            {/* Semi-fini (sauce) enrichi */}
+            {enrichedSauce && (
+              <TableRow>
+                <TableCell>Semi-fini</TableCell>
+                <TableCell>{enrichedSauce.nom}</TableCell>
+                <TableCell>{enrichedSauce.lot_number}</TableCell>
+                <TableCell>{enrichedSauce.pays_origine}</TableCell>
+                <TableCell>{formatValue(enrichedSauce.valeur)}</TableCell>
+                <TableCell>{enrichedSauce.code_douanier}</TableCell>
+                <TableCell>
+                  {enrichedMatieresPremiere
+                    .filter(mp => enrichedSauce.matieres_premieres?.some(m => m.lot === mp.lot))
+                    .map(mp => mp.nom)
+                    .join(', ') || '-'}
+                </TableCell>
+                <TableCell>{enrichedSauce.transformations && enrichedSauce.transformations.length > 0 ? enrichedSauce.transformations.join(', ') : '-'}</TableCell>
+              </TableRow>
+            )}
+            {/* Produit fini enrichi */}
+            {enrichedProduitFini && (
+              <TableRow>
+                <TableCell>Produit fini</TableCell>
+                <TableCell>{enrichedProduitFini.nom}</TableCell>
+                <TableCell>{enrichedProduitFini.lot}</TableCell>
+                <TableCell>{enrichedProduitFini.pays_origine}</TableCell>
+                <TableCell>{formatValue(enrichedProduitFini.valeur)}</TableCell>
+                <TableCell>{enrichedProduitFini.code_douanier}</TableCell>
+                <TableCell>
+                  {enrichedSauce ? enrichedSauce.nom : '-'}
+                </TableCell>
+                <TableCell>{enrichedProduitFini.transformations && enrichedProduitFini.transformations.length > 0 ? enrichedProduitFini.transformations.join(', ') : '-'}</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
+  useEffect(() => {
+    const updateSimpleTable = async () => {
+      if (analyseData) {
+        const content = await renderSimpleTable();
+        setSimpleTableContent(content);
+      } else {
+        setSimpleTableContent(null);
+      }
+    };
+    updateSimpleTable();
+  }, [analyseData]);
+
+  // Gérer l'affichage du graphique
+  const handleShowGraph = () => {
+    if (!showGraph) {
+      const { nodes: newNodes, edges: newEdges } = createGraphData();
+      setNodes(newNodes);
+      setEdges(newEdges);
+    }
+    setShowGraph(!showGraph);
+  };
+
+  // Style pour le conteneur principal
+  const containerStyle = {
+    display: 'flex',
+    width: '100%',
+    height: '80vh',
+    gap: '20px'
+  };
+
+  // Style pour le graphe
+  const graphStyle = {
+    flex: '2',
+    border: '1px solid #ccc',
+    borderRadius: '8px'
+  };
+
+  // Style pour le panneau de détails
+  const detailsPanelStyle = {
+    flex: '1',
+    padding: '20px',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    backgroundColor: '#f5f5f5',
+    overflowY: 'auto'
+  };
+
+  const getStatusColor = (status) => {
+    if (!status) return 'error';
+    return status === 'valide' ? 'success' : 'warning';
+  };
+
+  const getStatusLabel = (received, status) => {
+    if (!received) return 'Non reçu';
+    return status === 'valide' ? 'Reçu' : 'En attente';
+  };
+
+  const renderDetailsPanel = () => {
+    if (isLoadingDetails) {
+      return (
+        <Paper sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <CircularProgress />
+          </Box>
+        </Paper>
+      );
+    }
+
+    if (!selectedElement || !selectedElementDetails) {
+      return (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="body1" color="text.secondary">
+          </Typography>
+        </Paper>
+      );
+    }
+
+    const details = getElementDetails();
+    console.log('Final details to render:', details);
+
+    return (
+      <Paper sx={{ p: 3 }}>
+        <Box sx={{ p: 2 }}>
+          {/* Informations principales */}
+          <Typography variant="h6" gutterBottom>
+            Détails de l'élément
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            {Object.entries(details).map(([key, value]) => (
+              <Grid item xs={12} sm={6} key={key}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  {key}
+                </Typography>
+                <Typography variant="body1">
+                  {value}
+                </Typography>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Section des documents */}
+          {elementDocuments && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                État des documents
+              </Typography>
+              <Grid container spacing={2}>
+                {['bon_livraison', 'bulletin_analyse', 'certificat'].map((docType) => {
+                  console.log('Processing document type:', docType);
+                  const { received, status, date, doc, isRequired } = getDocumentStatus(docType);
+                  console.log('Document details:', { received, status, date, doc, isRequired });
+                  
+                  const docTitle = docType === 'bon_livraison' ? 'Bon de livraison' :
+                                docType === 'bulletin_analyse' ? 'Bulletin d\'analyse' :
+                                'Certificat';
+
+                  // N'afficher que si le document est requis ou reçu
+                  if (isRequired || received) {
+                    console.log('Rendering document:', docType);
+                    return (
+                      <Grid item xs={12} key={docType}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center',
+                          gap: 2,
+                          py: 1,
+                          borderBottom: '1px solid',
+                          borderColor: 'divider'
+                        }}>
+                          <Box sx={{ minWidth: 150 }}>
+                            <Typography variant="body1">
+                              {docTitle}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={getStatusLabel(received, status)}
+                            color={getStatusColor(status)}
+                            size="small"
+                            sx={{ minWidth: 80 }}
+                          />
+                          {received && date && (
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Reçu le {new Date(date).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          )}
+                          {doc && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleShowAnalysis(doc)}
+                            >
+                              Voir analyse
+                            </Button>
+                          )}
+                        </Box>
+                      </Grid>
+                    );
+                  }
+                  console.log('Skipping document:', docType);
+                  return null;
+                })}
+              </Grid>
+            </Box>
+          )}
+        </Box>
+      </Paper>
+    );
+  };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Analyse de Traçabilité
+        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Produit Fini</InputLabel>
+            <Select
+              value={selectedProduit}
+              label="Produit Fini"
+              onChange={handleProduitChange}
+            >
+              {produitsFinis.map((produit) => (
+                <MenuItem key={produit.id} value={produit.nom}>
+                  {produit.nom}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            onClick={handleAnalyse}
+            disabled={!selectedProduit}
+          >
+            Analyser
+          </Button>
+        </Box>
+
+        {analyseData && (
+          <>
+            <Box sx={{ height: 500, mt: 4, mb: 4 }}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                defaultEdgeOptions={defaultEdgeOptions}
+                fitView
+              >
+                <Background />
+                <Controls />
+              </ReactFlow>
+            </Box>
+            {renderAnalyseTable()}
+            <Paper sx={{ p: 3, mt: 3, mb: 3, border: '2px solid #4caf50' }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#4caf50' }}>
+                Origine préférentielle
+              </Typography>
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Statut : France</strong>
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  L'origine préférentielle pour le DS9 est <strong>France</strong>.
+                </Typography>
+                <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                  <strong>Règle de calcul pour l'origine préférentielle</strong>
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Règle de la transformation suffisante :</strong> Le produit doit avoir subi une transformation substantielle dans le pays pour lequel on souhaite obtenir l'origine préférentielle.
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Méthode de la valeur ajoutée :</strong> Calculez le pourcentage de valeur ajoutée dans le pays concerné selon la formule :
+                  <br />
+                  % Valeur ajoutée = ((Prix départ usine - Valeur des matières non-originaires) / Prix départ usine) × 100
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Seuil minimal :</strong> Vérifiez que ce pourcentage atteint ou dépasse le seuil minimal requis par l'accord commercial applicable (généralement entre 40% et 60%).
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Règle du changement de position tarifaire :</strong> Vérifiez si le produit fini a une position tarifaire (code SH/NC) différente de celle des matières non-originaires utilisées.
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Règles spécifiques par produit :</strong> Consultez les règles spécifiques de l'accord commercial concerné pour votre type de produit, car certains produits ont des critères particuliers.
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Tolérance générale :</strong> Tenez compte de la tolérance générale (souvent 10%) qui permet d'utiliser un certain pourcentage de matériaux non-originaires sans affecter l'origine préférentielle.
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  <strong>Cumul d'origine :</strong> Vérifiez si vous pouvez appliquer le cumul d'origine, qui permet de considérer les matières originaires d'un pays partenaire comme originaires du pays de fabrication.
+                </Typography>
+                <Typography variant="body1" sx={{ fontStyle: 'italic', mt: 2 }}>
+                  Cette règle de calcul doit toujours être appliquée en fonction de l'accord commercial spécifique (UE-Japon, ALENA/ACEUM, etc.) car les critères précis peuvent varier.
+                </Typography>
+              </Box>
+            </Paper>
+            <Paper sx={{ p: 3, mt: 3, mb: 3, border: '2px solid #1976d2' }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2' }}>
+                Analyse Made in France
+              </Typography>
+              <Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  <strong>Statut : Made in France</strong>
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  L'analyse de la chaîne de production révèle que ce produit peut être considéré comme "Made in France" pour les raisons suivantes :
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  • Les matières premières sont majoritairement sourcées en France, comme en témoignent les bons de livraison et les certificats d'origine
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  • Les processus de transformation et de fabrication sont entièrement réalisés dans des installations situées sur le territoire français
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  • La valeur ajoutée significative est créée en France à travers les différentes étapes de production et de transformation
+                </Typography>
+              </Box>
+            </Paper>
+            {renderDetailsPanel()}
+            {simpleTableContent}
+          </>
+        )}
+      </Paper>
+      {renderAnalysisModals()}
+    </Box>
+  );
+};
+
+export default Analyse;

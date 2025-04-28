@@ -1,0 +1,1570 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { 
+  Box, 
+  TextField, 
+  Button, 
+  Typography, 
+  Paper, 
+  FormControl, 
+  FormControlLabel, 
+  FormLabel, 
+  Radio, 
+  RadioGroup, 
+  Checkbox, 
+  CircularProgress, 
+  Alert, 
+  Divider, 
+  Grid,
+  Slider,
+  Tooltip,
+  IconButton,
+  InputLabel,
+  Select,
+  MenuItem,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody
+} from '@mui/material';
+import { 
+  FileDownload as FileDownloadIcon, 
+  CheckCircleOutline as CheckCircleOutlineIcon, 
+  Delete as DeleteIcon, 
+  List as ListIcon, 
+  UploadFile as UploadFileIcon,
+  Analytics as AnalyticsIcon,
+  Search as SearchIcon
+} from '@mui/icons-material';
+import CorrectionsModal from './CorrectionsModal';
+
+// Configuration de l'API
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5004';
+const PDF_API_URL = 'http://localhost:5005'; // URL du serveur PDF autonome
+
+function Query() {
+  const [productDescription, setProductDescription] = useState('');
+  const [eanCode, setEanCode] = useState('');
+  const [searchMode, setSearchMode] = useState('description'); // uniquement 'description' maintenant
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [useEngine1, setUseEngine1] = useState(true);
+  const [useEngine2, setUseEngine2] = useState(false);
+  const [useEngine3, setUseEngine3] = useState(false);
+  const [useDocumentSearch, setUseDocumentSearch] = useState(false);
+  const [isLoading1, setIsLoading1] = useState(false);
+  const [isLoading2, setIsLoading2] = useState(false);
+  const [isLoading3, setIsLoading3] = useState(false);
+  const [isLoadingEan, setIsLoadingEan] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [engine1Response, setEngine1Response] = useState('');
+  const [engine2Response, setEngine2Response] = useState('');
+  const [engine3Response, setEngine3Response] = useState('');
+  const [engine1Explanation, setEngine1Explanation] = useState('');
+  const [engine2Explanation, setEngine2Explanation] = useState('');
+  const [engine3Explanation, setEngine3Explanation] = useState('');
+  const [error, setError] = useState('');
+  const [productInfo, setProductInfo] = useState(null);
+  const [correctedCode, setCorrectedCode] = useState('');
+  const [isSubmittingCorrection, setIsSubmittingCorrection] = useState(false);
+  const [correctionSubmitted, setCorrectionSubmitted] = useState(false);
+  const [isResettingCorrections, setIsResettingCorrections] = useState(false);
+  const [correctionsReset, setCorrectionsReset] = useState(false);
+  const [correctionsModalOpen, setCorrectionsModalOpen] = useState(false);
+  const [pdfAnalysisResult, setPdfAnalysisResult] = useState(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [ragTemperature, setRagTemperature] = useState(0.2);
+  const [vectorStores, setVectorStores] = useState([]);
+  const [selectedVectorStore, setSelectedVectorStore] = useState('');
+  const [isLoadingVectorStores, setIsLoadingVectorStores] = useState(false);
+  const [pdfSearchResults, setPdfSearchResults] = useState([]);
+  const [cnCode, setCnCode] = useState('');
+  const [cnCodeResults, setCnCodeResults] = useState([]);
+  const [isLoadingCnCode, setIsLoadingCnCode] = useState(false);
+  const [cnCodeError, setCnCodeError] = useState('');
+  const [reasoningResponse, setReasoningResponse] = useState('');
+  const [isLoadingReasoning, setIsLoadingReasoning] = useState(false);
+  const [showReasoningResult, setShowReasoningResult] = useState(false);
+  const [productOrigin, setProductOrigin] = useState('');
+  const [productDestination, setProductDestination] = useState('');
+  const fileInputRef = React.createRef();
+
+  const handleSearchModeChange = (event) => {
+    setSearchMode(event.target.value);
+    // Réinitialiser les résultats lors du changement de mode
+    setEngine1Response('');
+    setEngine2Response('');
+    setEngine3Response('');
+    setEngine1Explanation('');
+    setEngine2Explanation('');
+    setEngine3Explanation('');
+    setProductInfo(null);
+    setError('');
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    setSelectedImage(file);
+    setIsAnalyzingImage(true);
+    setError('');
+    
+    try {
+      // Créer un FormData pour envoyer l'image
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Envoyer l'image à l'API dédiée pour analyse avec ChatGPT (port 5006)
+      console.log('Envoi de l\'image au serveur d\'analyse sur le port 5006');
+      const response = await axios.post(`http://localhost:5006/analyze-image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Mettre à jour la description du produit avec la description générée
+      if (response.data && response.data.description) {
+        setProductDescription(response.data.description);
+      } else {
+        setError('Aucune description générée pour cette image');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse de l\'image:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsAnalyzingImage(false);
+    }
+  };
+
+  const handleEanSearch = async () => {
+    if (!eanCode.trim()) {
+      setError('Veuillez entrer un code EAN valide');
+      return;
+    }
+
+    setError('');
+    setIsLoadingEan(true);
+    setProductInfo(null);
+    
+    try {
+      // Appel à l'API pour rechercher les informations du produit par code EAN
+      const response = await axios.get(`${API_URL}/api/product-info/${eanCode.trim()}`);
+      
+      if (response.data && response.data.name) {
+        setProductInfo(response.data);
+        setProductDescription(response.data.name + (response.data.description ? ` - ${response.data.description}` : ''));
+      } else {
+        setError('Aucun produit trouvé pour ce code EAN');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche du produit par EAN:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsLoadingEan(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    // Réinitialiser les résultats précédents
+    setEngine1Response('');
+    setEngine2Response('');
+    setEngine3Response('');
+    setEngine1Explanation('');
+    setEngine2Explanation('');
+    setEngine3Explanation('');
+    setPdfAnalysisResult(prevState => ({
+      ...prevState,
+      documentSearchResults: null,
+      ragResponse: null
+    }));
+    setError('');
+    
+    if (!productDescription.trim() && searchMode === 'description') {
+      setError('Veuillez entrer une description du produit');
+      return;
+    }
+    
+    // Lancer les recherches avec les moteurs sélectionnés
+    if (useEngine1) {
+      await searchWithEngine1();
+    }
+    
+    if (useEngine2) {
+      await searchWithEngine2();
+    }
+    
+    if (useEngine3) {
+      await searchWithEngine3();
+    }
+    
+    // Lancer l'analyse du document PDF si l'option est sélectionnée et qu'un fichier est chargé
+    if (useDocumentSearch && pdfAnalysisResult && pdfAnalysisResult.collectionName) {
+      console.log('Lancement de la recherche dans le document...');
+      await searchInPdf();
+      console.log('Recherche dans le document PDF terminée');
+    } else if (useDocumentSearch && !pdfAnalysisResult) {
+      setError('Veuillez d\'abord charger et analyser un fichier PDF pour la recherche dans le document');
+    }
+  };
+
+  const handleSubmitCorrection = async () => {
+    if (!correctedCode || correctedCode.length !== 8 || !/^\d+$/.test(correctedCode)) {
+      setError('Le code corrigé doit contenir exactement 8 chiffres');
+      return;
+    }
+
+    setIsSubmittingCorrection(true);
+    setError('');
+
+    try {
+      await axios.post(`${API_URL}/api/submit-correction`, {
+        description: productDescription,
+        correctedCode,
+        originalResults: {
+          engine1: engine1Response,
+          engine2: engine2Response,
+          engine3: engine3Response
+        }
+      });
+
+      setCorrectionSubmitted(true);
+      setTimeout(() => setCorrectionSubmitted(false), 3000); // Réinitialiser après 3 secondes
+    } catch (error) {
+      console.error('Erreur lors de la soumission de la correction:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsSubmittingCorrection(false);
+    }
+  };
+
+  const handleResetCorrections = async () => {
+    setIsResettingCorrections(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API_URL}/api/reset-corrections`);
+      setCorrectionsReset(true);
+      setTimeout(() => setCorrectionsReset(false), 3000); // Réinitialiser après 3 secondes
+    } catch (error) {
+      console.error('Erreur lors de la réinitialisation des corrections:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsResettingCorrections(false);
+    }
+  };
+
+  const handleReasoningAnalysis = async () => {
+    // Vérifier si au moins un moteur a généré un résultat
+    if (!engine1Response && !engine2Response && !engine3Response) {
+      setError('Aucun résultat de moteur disponible pour l\'analyse par raisonnement');
+      return;
+    }
+
+    setIsLoadingReasoning(true);
+    setError('');
+    
+    try {
+      // Préparer les données des résultats des moteurs
+      const engineResults = {
+        engine1: engine1Response ? { code: engine1Response, explanation: engine1Explanation } : null,
+        engine2: engine2Response ? { code: engine2Response, explanation: engine2Explanation } : null,
+        engine3: engine3Response ? { code: engine3Response, explanation: engine3Explanation } : null,
+      };
+      
+      // Construire le prompt pour l'analyse par raisonnement
+      let prompt = `Peux-tu me dire en argumentant, quel moteur a la meilleure réponse pour déterminer le code douanier. Donner un pourcentage de fiabilité aux réponses de ces moteurs. As-tu une meilleure suggestion de code douane que celles faites par les 3 moteurs et donne un pourcentage de fiabilité à ta réponse.\n\nDescription du produit: ${productDescription}\n\nRésultats des moteurs:\n${JSON.stringify(engineResults, null, 2)}`;
+      
+      // Ajouter l'information sur l'origine de la matière première si elle est renseignée
+      if (productOrigin.trim()) {
+        prompt += `\n\n**ANALYSE SPÉCIFIQUE POUR L'ORIGINE DE LA MATIÈRE PREMIÈRE**\n\nEn tant que spécialiste de la douane, fournis une analyse détaillée et structurée des réglementations douanières spécifiques pour ce produit s'il provient de ${productOrigin}.\n\nTa réponse doit inclure les sections suivantes, adaptées au type de produit concerné:\n\n1. **Statut douanier et code tarifaire**\n   - Confirmation du code douanier pour ce produit spécifique venant de ${productOrigin}\n   - Droits de douane applicables et accords commerciaux éventuels avec ${productOrigin}\n   - Mesures tarifaires spécifiques (préférentielles ou restrictives)\n\n2. **Réglementations spécifiques à l'importation**\n   - Réglementations applicables selon la nature du produit (sanitaire, technique, sécurité, etc.)\n   - Contrôles aux frontières applicables\n   - Restrictions ou interdictions éventuelles\n   - Licences ou autorisations spéciales requises\n\n3. **Réglementation sectorielle**\n   - Exigences spécifiques selon la catégorie du produit et son usage\n   - Normes de conformité, de qualité ou de sécurité applicables\n   - Certifications requises pour la mise sur le marché\n\n4. **Documents requis pour l'importation**\n   - Liste des documents nécessaires adaptée au type de produit\n   - Procédures de dédouanement spécifiques\n   - Éventuelles formalités particulières\n\n5. **Points de vigilance**\n   - Risques particuliers liés à l'importation depuis ${productOrigin}\n   - Conseils pratiques pour l'importateur\n   - Éventuelles mesures antidumping ou compensatoires\n\n6. **Conclusion**\n   - Résumé des points clés et recommandations\n   - Réponse claire à la question: existe-t-il une réglementation particulière pour ce produit en provenance de ${productOrigin}?\n\nCette analyse doit être ajoutée à la fin de ta réponse principale, clairement séparée et identifiée comme 'Analyse de l'origine de la matière première: ${productOrigin}'.`;
+      }
+      
+      // Ajouter l'information sur la destination du produit fini si elle est renseignée
+      if (productDestination.trim()) {
+        prompt += `\n\n**ANALYSE SPÉCIFIQUE POUR LE PAYS DE DESTINATION DU PRODUIT FINI**\n\nEn tant que spécialiste de la douane, fournis une analyse détaillée et concrète des réglementations spécifiques pour l'exportation vers ${productDestination} de produits contenant cette matière première. Ta réponse doit être précise, pratique et directement applicable.\n\nCommence par répondre clairement à la question: "Oui" ou "Non", existe-t-il une réglementation particulière pour les produits contenant cette matière première au ${productDestination}?\n\nEnsuite, détaille les points suivants de manière concise et structurée:\n\n1. **Classification douanière et tarifs**\n   - Position tarifaire précise applicable dans le système douanier de ${productDestination}\n   - Taux de droits de douane et taxes spécifiques\n   - Accords préférentiels applicables (réduction ou exemption de droits)\n\n2. **Réglementation sanitaire/technique spécifique**\n   - Lois et règlements précis régissant ce type de produit au ${productDestination}\n   - Limites ou seuils réglementaires (ex: concentration maximale, résidus autorisés)\n   - Restrictions particulières liées à cette matière première\n\n3. **Certificats et documents obligatoires**\n   - Liste précise des certificats exigés (sanitaires, d'analyse, etc.)\n   - Autorités compétentes pour la délivrance de ces documents\n   - Procédures de dédouanement spécifiques\n\n4. **Contrôles à l'importation**\n   - Types d'inspections appliquées (documentaire, physique, laboratoire)\n   - Organismes responsables des contrôles au ${productDestination}\n   - Fréquence et rigueur des contrôles pour ce type de produit\n\n5. **Exigences d'étiquetage et de conditionnement**\n   - Règles spécifiques d'étiquetage au ${productDestination}\n   - Mentions obligatoires dans la langue locale\n   - Restrictions sur l'emballage ou le conditionnement\n\n6. **Conseils pratiques**\n   - Difficultés fréquemment rencontrées par les exportateurs\n   - Recommandations pour faciliter l'accès au marché de ${productDestination}\n   - Contacts utiles (autorités, organismes certificateurs)\n\nTa réponse doit être concrète, factuelle et directement applicable pour un exportateur. Cite des références précises aux lois et règlements pertinents lorsque c'est possible. Adapte ton analyse spécifiquement à la matière première décrite dans la requête initiale, en tenant compte de sa nature et de ses caractéristiques particulières.\n\nCette analyse doit être ajoutée après l'analyse de l'origine (si présente), clairement séparée et identifiée comme 'Analyse de la destination du produit fini: ${productDestination}'.`;
+      }
+      
+      // Appeler l'API ChatGPT pour l'analyse par raisonnement
+      const response = await axios.post(`${API_URL}/api/gpt/reasoning-analysis`, {
+        prompt: prompt
+      });
+      
+      // Mettre à jour l'état avec la réponse
+      if (response.data && response.data.analysis) {
+        setReasoningResponse(response.data.analysis);
+        setShowReasoningResult(true);
+      } else {
+        setError('Aucune analyse par raisonnement générée');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse par raisonnement:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsLoadingReasoning(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setIsExportingPDF(true);
+      setError('');
+      
+      // Préparer les résultats à envoyer
+      const results = [];
+      
+      if (engine1Response) {
+        results.push({
+          engine: 'Engine 1',
+          code: engine1Response,
+          explanation: engine1Explanation
+        });
+      }
+      
+      if (engine2Response) {
+        results.push({
+          engine: 'Engine 2',
+          code: engine2Response,
+          explanation: engine2Explanation
+        });
+      }
+      
+      if (engine3Response) {
+        results.push({
+          engine: 'Engine 3',
+          code: engine3Response,
+          explanation: engine3Explanation
+        });
+      }
+      
+      // Ajouter le résultat du moteur par raisonnement s'il existe
+      if (reasoningResponse) {
+        results.push({
+          engine: 'Moteur par raisonnement',
+          code: 'Analyse',
+          explanation: reasoningResponse
+        });
+      }
+      
+      if (results.length === 0) {
+        setError('Aucun résultat à exporter');
+        setIsExportingPDF(false);
+        return;
+      }
+      
+      // Préparer les données pour le PDF
+      const pdfData = {
+        productDescription,
+        results
+      };
+      
+      // Ajouter l'image du produit si elle existe
+      if (selectedImage) {
+        // Créer un FormData pour envoyer l'image
+        const formData = new FormData();
+        formData.append('image', selectedImage);
+        formData.append('data', JSON.stringify(pdfData));
+        
+        // Faire la requête pour générer le PDF avec l'image
+        const response = await axios.post(
+          `${API_URL}/api/export-pdf-with-image`, 
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            responseType: 'blob' // Important pour recevoir le fichier binaire
+          }
+        );
+        
+        // Créer un URL pour le blob et déclencher le téléchargement
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `resultats_douaniers_${Date.now()}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Nettoyer
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      } else {
+        // Faire la requête pour générer le PDF sans image
+        const response = await axios.post(
+          `${API_URL}/api/export-pdf`, 
+          pdfData,
+          {
+            responseType: 'blob' // Important pour recevoir le fichier binaire
+          }
+        );
+        
+        // Créer un URL pour le blob et déclencher le téléchargement
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `resultats_douaniers_${Date.now()}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Nettoyer
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      }
+      
+      // Le téléchargement est géré dans les blocs conditionnels ci-dessus
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      setError(`Erreur lors de l'export PDF: ${error.message}`);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  const analyzeDocument = async () => {
+    if (!selectedFile) {
+      setError('Veuillez d\'abord charger un fichier PDF');
+      return;
+    }
+    
+    setIsLoadingPdf(true);
+    setError('');
+    
+    try {
+      const formData = new FormData();
+      formData.append('pdfFile', selectedFile);
+      
+      // Ajouter la description du produit à la requête pour filtrer les résultats
+      if (productDescription) {
+        formData.append('productDescription', productDescription);
+      }
+      
+      console.log('Envoi du fichier PDF pour analyse:', selectedFile.name);
+      console.log('Description du produit:', productDescription);
+      
+      const response = await axios.post(`${API_URL}/api/analyze`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      console.log('Réponse brute de l\'API:', response);
+      console.log('Résultat de l\'analyse PDF:', response.data);
+      
+      // Vérifier la structure de la réponse
+      if (response.data) {
+        // S'assurer que la structure est correcte avant de mettre à jour l'état
+        const result = {
+          codes: response.data.codes || [],
+          totalFound: response.data.totalFound || 0,
+          explanatoryResult: response.data.explanatoryResult || null,
+          categorizedResults: response.data.categorizedResults || null,
+          collectionName: response.data.collectionName || null,
+          filePath: response.data.filePath || null
+        };
+        console.log('Mise à jour de l\'état pdfAnalysisResult avec:', result);
+        setPdfAnalysisResult(result);
+        
+        // Recharger la liste des bases de données vectorielles
+        await loadVectorStores();
+        
+        // Sélectionner automatiquement la nouvelle base de données
+        setSelectedVectorStore(response.data.collectionName);
+        
+        // Réinitialiser le champ de fichier
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } else {
+        console.error('La réponse de l\'API n\'a pas la structure attendue:', response.data);
+        setError('Erreur: Format de réponse incorrect');
+        setPdfAnalysisResult(null);
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse du document:', error);
+      setError(`Erreur: ${error.response?.data?.error || error.message}`);
+      setPdfAnalysisResult(null);
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
+  const searchInPdf = async () => {
+    if (!productDescription) {
+      alert('Veuillez entrer une description de produit');
+      return;
+    }
+    
+    if (!selectedVectorStore) {
+      alert('Veuillez sélectionner une base de données vectorielle');
+      return;
+    }
+    
+    try {
+      setIsLoadingPdf(true);
+      setPdfError('');
+      
+      console.log('Recherche dans le PDF avec les paramètres suivants:');
+      console.log('- Collection:', selectedVectorStore);
+      console.log('- Query:', productDescription);
+      console.log('- Température:', ragTemperature);
+      
+      // Utiliser le serveur PDF autonome pour la recherche
+      const response = await axios.post(`${PDF_API_URL}/direct-pdf-search`, {
+        collectionName: selectedVectorStore,
+        query: productDescription,
+        filePath: vectorStores.find(store => store.id === selectedVectorStore)?.fileName || '',
+        temperature: ragTemperature
+      });
+      
+      console.log('Réponse de la recherche:', response.data);
+      
+      if (response.data.success) {
+        setPdfAnalysisResult(prevState => ({
+          ...prevState,
+          searchResults: response.data.searchResults,
+          ragResponse: response.data.ragResponse,
+          usedTemperature: response.data.usedTemperature
+        }));
+      } else {
+        setPdfError(response.data.error || 'Une erreur est survenue lors de la recherche');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche dans le PDF:', error);
+      console.error('Détails de l\'erreur:', error.response?.data || error);
+      setPdfError(error.response?.data?.error || error.message || 'Une erreur est survenue lors de la recherche');
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelect = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
+
+  const formatExplanationObject = (explanationObj) => {
+    if (!explanationObj) return '';
+    
+    let formattedExplanation = '';
+    
+    // Parcourir toutes les propriétés de l'objet et les ajouter au texte formaté
+    for (const [key, value] of Object.entries(explanationObj)) {
+      // Formater la clé en titre
+      const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+      
+      // Ajouter la clé et la valeur au texte formaté
+      if (typeof value === 'object') {
+        // Si la valeur est elle-même un objet, la formater récursivement
+        formattedExplanation += `${formattedKey}:\n${formatExplanationObject(value)}\n\n`;
+      } else {
+        // Mettre en évidence les références et sources
+        let formattedValue = value;
+        
+        // Vérifier si la clé concerne une référence ou une source
+        if (key.toLowerCase().includes('référence') || 
+            key.toLowerCase().includes('reference') || 
+            key.toLowerCase().includes('source') || 
+            key.toLowerCase().includes('origine')) {
+          formattedValue = `<strong style="color: #2e7d32">${value}</strong>`;
+        }
+        
+        formattedExplanation += `${formattedKey}: ${formattedValue}\n\n`;
+      }
+    }
+    
+    return formattedExplanation;
+  };
+
+  const searchWithEngine1 = async () => {
+    setIsLoading1(true);
+    setEngine1Response('');
+    try {
+      const response = await axios.post(`${API_URL}/api/query-customs-code`, {
+        description: productDescription,
+        engine: 'gpt',
+        includeExplanation: true
+      });
+      
+      if (response.data.code) {
+        setEngine1Response(response.data.code);
+        
+        // Vérifier si l'explication est un objet et le convertir en chaîne si nécessaire
+        let explanation = response.data.explanation;
+        if (explanation && typeof explanation === 'object') {
+          explanation = formatExplanationObject(explanation);
+        }
+        
+        setEngine1Explanation(explanation || 'Aucune explication disponible');
+      } else {
+        setEngine1Response(response.data.message || 'Aucun code trouvé');
+        setEngine1Explanation('');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la requête Engine 1:', error);
+      setEngine1Response(`Erreur: ${error.response?.data?.error || error.message}`);
+      setEngine1Explanation('');
+    } finally {
+      setIsLoading1(false);
+    }
+  };
+
+  const searchWithEngine2 = async () => {
+    setIsLoading2(true);
+    setEngine2Response('');
+    try {
+      const response = await axios.post(`${API_URL}/api/query-customs-code`, {
+        description: productDescription,
+        engine: 'claude',
+        includeExplanation: true
+      });
+      
+      if (response.data.code) {
+        setEngine2Response(response.data.code);
+        
+        // Vérifier si l'explication est un objet et le convertir en chaîne si nécessaire
+        let explanation = response.data.explanation;
+        if (explanation && typeof explanation === 'object') {
+          explanation = formatExplanationObject(explanation);
+        }
+        
+        setEngine2Explanation(explanation || 'Aucune explication disponible');
+      } else {
+        setEngine2Response(response.data.message || 'Aucun code trouvé');
+        setEngine2Explanation('');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la requête Engine 2:', error);
+      setEngine2Response(`Erreur: ${error.response?.data?.error || error.message}`);
+      setEngine2Explanation('');
+    } finally {
+      setIsLoading2(false);
+    }
+  };
+
+  const searchWithEngine3 = async () => {
+    setIsLoading3(true);
+    setEngine3Response('');
+    try {
+      const response = await axios.post(`${API_URL}/api/query-customs-code`, {
+        description: productDescription,
+        engine: 'deepseek',
+        includeExplanation: true
+      });
+      
+      if (response.data.code) {
+        setEngine3Response(response.data.code);
+        
+        // Vérifier si l'explication est un objet et le convertir en chaîne si nécessaire
+        let explanation = response.data.explanation;
+        if (explanation && typeof explanation === 'object') {
+          explanation = formatExplanationObject(explanation);
+        }
+        
+        setEngine3Explanation(explanation || 'Aucune explication disponible');
+      } else {
+        setEngine3Response(response.data.message || 'Aucun code trouvé');
+        setEngine3Explanation('');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la requête Engine 3:', error);
+      setEngine3Response(`Erreur: ${error.response?.data?.error || error.message}`);
+      setEngine3Explanation('');
+    } finally {
+      setIsLoading3(false);
+    }
+  };
+
+  const hasResults = engine1Response || engine2Response || engine3Response;
+
+  // Charger la liste des bases de données vectorielles
+  const loadVectorStores = async () => {
+    try {
+      setIsLoadingVectorStores(true);
+      // Utiliser le serveur PDF autonome pour lister les bases vectorielles
+      const response = await axios.get(`${PDF_API_URL}/list-vector-stores`);
+      
+      console.log('Réponse de l\'API list-vector-stores:', response.data);
+      
+      if (response.data.stores) {
+        setVectorStores(response.data.stores);
+        // Sélectionner automatiquement la base de données la plus récente s'il y en a
+        if (response.data.stores.length > 0 && !selectedVectorStore) {
+          setSelectedVectorStore(response.data.stores[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des bases de données vectorielles:', error);
+    } finally {
+      setIsLoadingVectorStores(false);
+    }
+  };
+
+  // Gérer le changement de base de données vectorielle
+  const handleVectorStoreChange = (event) => {
+    setSelectedVectorStore(event.target.value);
+  };
+
+  // Charger la liste des bases de données vectorielles au chargement du composant
+  useEffect(() => {
+    loadVectorStores();
+  }, []);
+
+  // Recharger la liste des bases de données après l'analyse d'un nouveau fichier
+  useEffect(() => {
+    if (pdfAnalysisResult && pdfAnalysisResult.collectionName) {
+      console.log('Nouveau fichier analysé, mise à jour de la liste des bases de données');
+      console.log('Collection name:', pdfAnalysisResult.collectionName);
+      
+      // Attendre un court instant pour s'assurer que le backend a bien enregistré la base de données
+      setTimeout(() => {
+        loadVectorStores();
+        setSelectedVectorStore(pdfAnalysisResult.collectionName);
+      }, 500);
+    }
+  }, [pdfAnalysisResult]);
+
+  // Fonction pour rechercher un code douane dans le fichier CSV
+  const searchCnCode = async () => {
+    if (!cnCode.trim()) {
+      setCnCodeError('Veuillez saisir un code douane');
+      return;
+    }
+    
+    setIsLoadingCnCode(true);
+    setCnCodeError('');
+    setCnCodeResults([]);
+    
+    try {
+      const response = await axios.get(`http://localhost:5004/api/lookup/${cnCode.trim()}`);
+      setCnCodeResults(response.data);
+    } catch (error) {
+      console.error('Erreur lors de la recherche du code douane:', error);
+      if (error.response && error.response.status === 404) {
+        setCnCodeError('Code douane non trouvé');
+      } else {
+        setCnCodeError('Erreur lors de la recherche du code douane');
+      }
+    } finally {
+      setIsLoadingCnCode(false);
+    }
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4" gutterBottom>
+          Recherche de code douanier
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<ListIcon />}
+            onClick={() => setCorrectionsModalOpen(true)}
+          >
+            Voir les optimisations
+          </Button>
+        </Box>
+      </Box>
+
+      {selectedFile && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Fichier chargé: {selectedFile.name}
+          {!pdfAnalysisResult && (
+            <Button 
+              variant="contained" 
+              size="small" 
+              sx={{ ml: 2 }} 
+              onClick={analyzeDocument}
+              disabled={isLoadingPdf}
+            >
+              {isLoadingPdf ? <CircularProgress size={24} /> : 'Analyser le document'}
+            </Button>
+          )}
+        </Alert>
+      )}
+
+      {isLoadingPdf && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <CircularProgress size={24} sx={{ mr: 2 }} />
+            Analyse du document en cours... Cela peut prendre quelques instants.
+          </Box>
+        </Alert>
+      )}
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <FormControl component="fieldset" sx={{ mr: 2 }}>
+            <FormLabel component="legend">Mode de recherche</FormLabel>
+            <RadioGroup
+              row
+              name="search-mode"
+              value={searchMode}
+              onChange={handleSearchModeChange}
+            >
+              <FormControlLabel value="description" control={<Radio />} label="Par description" />
+            </RadioGroup>
+          </FormControl>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="image-upload-button"
+              type="file"
+              onChange={handleImageUpload}
+            />
+            <label htmlFor="image-upload-button">
+              <Button
+                variant="contained"
+                component="span"
+                startIcon={<UploadFileIcon />}
+                disabled={isAnalyzingImage}
+              >
+                {isAnalyzingImage ? 'Analyse en cours...' : 'Charger une image'}
+              </Button>
+            </label>
+            {selectedImage && (
+              <Typography variant="body2" sx={{ ml: 2 }}>
+                Image chargée: {selectedImage.name}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+        
+        {searchMode === 'description' ? (
+          <TextField
+            fullWidth
+            label="Description du produit"
+            variant="outlined"
+            multiline
+            minRows={4}
+            maxRows={8}
+            value={productDescription}
+            onChange={(e) => setProductDescription(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={9}>
+                <TextField
+                  fullWidth
+                  label="Code EAN"
+                  variant="outlined"
+                  value={eanCode}
+                  onChange={(e) => setEanCode(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleEanSearch}
+                  disabled={isLoadingEan}
+                  sx={{ height: '100%' }}
+                >
+                  {isLoadingEan ? <CircularProgress size={24} /> : 'Rechercher'}
+                </Button>
+              </Grid>
+            </Grid>
+            
+            {productInfo && (
+              <Paper sx={{ p: 2, mt: 2, bgcolor: 'background.paper' }}>
+                <Typography variant="h6" gutterBottom>
+                  Produit trouvé
+                </Typography>
+                <Typography variant="body1">
+                  <strong>Nom:</strong> {productInfo.name}
+                </Typography>
+                {productInfo.description && (
+                  <Typography variant="body1">
+                    <strong>Description:</strong> {productInfo.description}
+                  </Typography>
+                )}
+                {productInfo.brand && (
+                  <Typography variant="body1">
+                    <strong>Marque:</strong> {productInfo.brand}
+                  </Typography>
+                )}
+                {productInfo.category && (
+                  <Typography variant="body1">
+                    <strong>Catégorie:</strong> {productInfo.category}
+                  </Typography>
+                )}
+              </Paper>
+            )}
+          </Box>
+        )}
+        
+        <Typography variant="h6" gutterBottom>
+          Moteurs de recherche
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <FormControlLabel
+              control={<Checkbox checked={useEngine1} onChange={(e) => setUseEngine1(e.target.checked)} />}
+              label="Engine 1"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={useEngine2} onChange={(e) => setUseEngine2(e.target.checked)} />}
+              label="Engine 2"
+            />
+            <FormControlLabel
+              control={<Checkbox checked={useEngine3} onChange={(e) => setUseEngine3(e.target.checked)} />}
+              label="Engine 3"
+            />
+            <TextField
+              label="Origine de la matière première"
+              variant="outlined"
+              size="small"
+              value={productOrigin}
+              onChange={(e) => setProductOrigin(e.target.value)}
+              placeholder="Pays d'origine"
+              sx={{ width: 250, ml: 2 }}
+            />
+            <TextField
+              label="Destination du produit fini"
+              variant="outlined"
+              size="small"
+              value={productDestination}
+              onChange={(e) => setProductDestination(e.target.value)}
+              placeholder="Pays de destination"
+              sx={{ width: 250, ml: 2 }}
+            />
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleReasoningAnalysis}
+              disabled={isLoadingReasoning || (!engine1Response && !engine2Response && !engine3Response)}
+              startIcon={<AnalyticsIcon />}
+              sx={{ ml: 2 }}
+            >
+              {isLoadingReasoning ? <CircularProgress size={24} /> : 'Utiliser le moteur par raisonnement'}
+            </Button>
+          </Box>
+        </Box>
+
+        
+        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSearch}
+            disabled={isLoading1 || isLoading2 || isLoading3 || isLoadingPdf || (searchMode === 'description' && !productDescription.trim())}
+          >
+            {isLoading1 || isLoading2 || isLoading3 || isLoadingPdf ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              'Lancer la recherche'
+            )}
+          </Button>
+          
+          {hasResults && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              startIcon={<FileDownloadIcon />}
+            >
+              {isExportingPDF ? <CircularProgress size={24} /> : 'Export PDF'}
+            </Button>
+          )}
+        </Box>
+        
+        {error && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
+        
+        {/* Afficher le résultat du moteur par raisonnement */}
+        {showReasoningResult && reasoningResponse && (
+          <Paper sx={{ p: 2, mt: 3, mb: 3, bgcolor: 'background.paper' }}>
+            <Typography variant="h6" gutterBottom>
+              Résultat du moteur par raisonnement
+            </Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+              {reasoningResponse}
+            </Typography>
+          </Paper>
+        )}
+        
+        {hasResults && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Soumettre une correction
+            </Typography>
+            <TextField
+              fullWidth
+              label="Code corrigé"
+              variant="outlined"
+              value={correctedCode}
+              onChange={(e) => setCorrectedCode(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmitCorrection}
+                disabled={isSubmittingCorrection}
+              >
+                {isSubmittingCorrection ? <CircularProgress size={24} /> : 'Soumettre'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleResetCorrections}
+                disabled={isResettingCorrections}
+                startIcon={<DeleteIcon />}
+              >
+                {isResettingCorrections ? <CircularProgress size={24} /> : 'Oublier les optimisations'}
+              </Button>
+            </Box>
+            {correctionSubmitted && (
+              <Tooltip title="La correction a été soumise avec succès">
+                <IconButton>
+                  <CheckCircleOutlineIcon color="success" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {correctionsReset && (
+              <Tooltip title="Toutes les corrections ont été supprimées">
+                <IconButton>
+                  <CheckCircleOutlineIcon color="success" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        )}
+      </Paper>
+      
+      {/* Section pour la recherche dans les PDF */}
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Recherche dans les documents PDF
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <FormControlLabel
+            control={<Checkbox checked={useDocumentSearch} onChange={(e) => setUseDocumentSearch(e.target.checked)} />}
+            label="Recherche dans le document"
+            disabled={!selectedVectorStore}
+          />
+          
+          {useDocumentSearch && (
+            <Box sx={{ mb: 2, width: '100%', maxWidth: 400 }}>
+              <Typography id="temperature-slider" gutterBottom>
+                Précision / Créativité
+              </Typography>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs>
+                  <Slider
+                    value={ragTemperature}
+                    onChange={(e, newValue) => setRagTemperature(newValue)}
+                    aria-labelledby="temperature-slider"
+                    step={0.05}
+                    marks={[
+                      { value: 0, label: 'Précis' },
+                      { value: 0.5, label: 'Équilibré' },
+                      { value: 1, label: 'Créatif' }
+                    ]}
+                    min={0}
+                    max={1}
+                    valueLabelDisplay="auto"
+                    valueLabelFormat={(value) => value.toFixed(2)}
+                  />
+                </Grid>
+                <Grid item>
+                  <Tooltip title="Une température basse donne des réponses plus précises et déterministes. Une température élevée donne des réponses plus créatives et variées.">
+                    <Typography variant="body2" color="text.secondary">
+                      {ragTemperature <= 0.3 ? 'Mode précis' : 
+                       ragTemperature >= 0.7 ? 'Mode créatif' : 'Mode équilibré'}
+                    </Typography>
+                  </Tooltip>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          <FormControl fullWidth>
+            <InputLabel id="vector-store-dropdown-label">Fichiers PDF analysés</InputLabel>
+            <Select
+              labelId="vector-store-dropdown-label"
+              value={selectedVectorStore}
+              label="Fichiers PDF analysés"
+              onChange={handleVectorStoreChange}
+              disabled={isLoadingVectorStores || isLoadingPdf}
+            >
+              {vectorStores.length === 0 ? (
+                <MenuItem value="" disabled>
+                  Aucun fichier analysé disponible
+                </MenuItem>
+              ) : (
+                vectorStores.map((store) => (
+                  <MenuItem key={store.id} value={store.id}>
+                    {store.displayName}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+          
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<UploadFileIcon />}
+              onClick={handleUploadClick}
+            >
+              Charger un nouveau fichier
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              accept="application/pdf"
+            />
+            
+            {selectedFile && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={analyzeDocument}
+                disabled={isLoadingPdf || !selectedFile}
+                startIcon={<AnalyticsIcon />}
+              >
+                Analyser le document
+              </Button>
+            )}
+            
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={searchInPdf}
+              disabled={isLoadingPdf || !selectedVectorStore || !productDescription}
+              startIcon={<SearchIcon />}
+            >
+              Rechercher dans la base vectorielle
+            </Button>
+          </Box>
+        </Box>
+        
+        {isLoadingPdf && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        
+        {selectedFile && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              Fichier sélectionné: {selectedFile.name}
+            </Typography>
+          </Box>
+        )}
+        
+        {pdfAnalysisResult && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Résultat de l'analyse
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle1">
+                {pdfAnalysisResult.fileName}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {pdfAnalysisResult.usedTemperature ? pdfAnalysisResult.usedTemperature.toFixed(2) : '0.00'} 
+                {pdfAnalysisResult.usedTemperature ? 
+                  (pdfAnalysisResult.usedTemperature <= 0.3 ? ' (Précis)' : 
+                  pdfAnalysisResult.usedTemperature >= 0.7 ? ' (Créatif)' : ' (Équilibré)')
+                : ' (Équilibré)'}
+              </Typography>
+            </Box>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+              {pdfAnalysisResult.summary}
+            </Typography>
+          </Box>
+        )}
+        
+        {pdfSearchResults.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Résultats de la recherche
+            </Typography>
+            {pdfSearchResults.map((result, index) => (
+              <Paper key={index} sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="subtitle2">
+                    Extrait {index + 1}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Score: {result.score ? result.score.toFixed(2) : 'N/A'}
+                  </Typography>
+                </Box>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap',
+                    '& mark': {
+                      backgroundColor: 'rgba(144, 202, 249, 0.2)',
+                      fontWeight: 'bold',
+                      padding: '0 2px'
+                    }
+                  }}
+                  dangerouslySetInnerHTML={{ __html: result.pageContent }}
+                />
+              </Paper>
+            ))}
+          </Box>
+        )}
+      </Paper>
+      
+      {/* Section pour la vérification rapide de code douane */}
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Rapide vérification
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            fullWidth
+            label="Code douane"
+            variant="outlined"
+            value={cnCode}
+            onChange={(e) => setCnCode(e.target.value)}
+            placeholder="Entrez un code douane (ex: 0101, 8471, etc.)"
+            helperText="Entrez un code douane pour voir sa description dans la nomenclature CN2025"
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={searchCnCode}
+            disabled={isLoadingCnCode}
+            startIcon={<SearchIcon />}
+          >
+            {isLoadingCnCode ? <CircularProgress size={24} /> : 'Rechercher'}
+          </Button>
+          {cnCodeError && (
+            <Typography color="error">
+              {cnCodeError}
+            </Typography>
+          )}
+          {cnCodeResults.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Résultats
+              </Typography>
+              {cnCodeResults.map((hierarchy, hierarchyIndex) => (
+                <Box key={hierarchyIndex} sx={{ mb: 3 }}>
+                  <TableContainer component={Paper} sx={{ mb: 2 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Niveau</TableCell>
+                          <TableCell>Code</TableCell>
+                          <TableCell>Description</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {hierarchy.map((result, index) => (
+                          <TableRow 
+                            key={index}
+                            sx={{ 
+                              backgroundColor: index === hierarchy.length - 1 ? 'rgba(144, 202, 249, 0.2)' : 'inherit',
+                              fontWeight: index === hierarchy.length - 1 ? 'bold' : 'normal'
+                            }}
+                          >
+                            <TableCell>{result.LEVEL}</TableCell>
+                            <TableCell>
+                              <Typography 
+                                component="span" 
+                                sx={{ 
+                                  fontWeight: index === hierarchy.length - 1 ? 'bold' : 'normal'
+                                }}
+                              >
+                                {result.CN_CODE}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography 
+                                component="span" 
+                                sx={{ 
+                                  fontWeight: index === hierarchy.length - 1 ? 'bold' : 'normal'
+                                }}
+                              >
+                                {result.NAME_FR}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Paper>
+      
+      {(pdfAnalysisResult?.ragResponse && useDocumentSearch) ? (
+        <Paper sx={{ p: 3, mt: 3, bgcolor: '#f5f5f5' }}>
+          <Typography variant="h6" gutterBottom>
+            Résultats de la recherche dans le document
+          </Typography>
+          
+          {pdfAnalysisResult.usedTemperature !== undefined && (
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                Paramètre de précision/créativité utilisé:
+              </Typography>
+              <Box sx={{ 
+                width: 100, 
+                height: 6, 
+                bgcolor: '#e0e0e0', 
+                borderRadius: 3, 
+                position: 'relative',
+                mr: 1
+              }}>
+                <Box sx={{ 
+                  position: 'absolute', 
+                  left: `${pdfAnalysisResult.usedTemperature * 100}%`, 
+                  transform: 'translateX(-50%)',
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: pdfAnalysisResult.usedTemperature <= 0.3 ? '#2196f3' : 
+                           pdfAnalysisResult.usedTemperature >= 0.7 ? '#ff9800' : 
+                           '#4caf50'
+                }} />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {pdfAnalysisResult.usedTemperature.toFixed(2)} 
+                {pdfAnalysisResult.usedTemperature <= 0.3 ? ' (Précis)' : 
+                 pdfAnalysisResult.usedTemperature >= 0.7 ? ' (Créatif)' : ' (Équilibré)'}
+              </Typography>
+            </Box>
+          )}
+          
+          <Typography 
+            variant="body1" 
+            component="div" 
+            sx={{ 
+              whiteSpace: 'pre-line', 
+              mb: 3, 
+              p: 2, 
+              bgcolor: 'white', 
+              borderRadius: 1,
+              boxShadow: 1
+            }}
+          >
+            {pdfAnalysisResult.ragResponse}
+          </Typography>
+          
+          {pdfAnalysisResult.documentSearchResults && pdfAnalysisResult.documentSearchResults.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', color: '#3f51b5' }}>
+                Passages pertinents trouvés dans le document:
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                {pdfAnalysisResult.documentSearchResults.map((result, index) => {
+                  // Traiter le contenu pour une meilleure présentation
+                  const content = result.pageContent;
+                  
+                  // Détecter si le passage contient des codes douaniers
+                  const hasCustomsCodes = /\*\*\d{4}(?:\.\d{2}|\s\d{2})(?:\.\d{2}|\s\d{2})?\*\*/g.test(content);
+                  
+                  return (
+                    <Paper 
+                      key={index} 
+                      sx={{ 
+                        p: 2, 
+                        mb: 2, 
+                        bgcolor: 'white', 
+                        borderLeft: '4px solid #3f51b5',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        '&:hover': {
+                          boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                          transition: 'box-shadow 0.3s ease-in-out'
+                        }
+                      }}
+                    >
+                      <Typography 
+                        variant="body1" 
+                        sx={{ 
+                          whiteSpace: 'pre-line',
+                          lineHeight: 1.8,
+                          color: '#333',
+                          '& strong': {
+                            backgroundColor: '#e3f2fd',
+                            padding: '0 4px',
+                            borderRadius: '3px',
+                            fontWeight: 'bold',
+                            color: '#0d47a1'
+                          }
+                        }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') 
+                        }}
+                      />
+                      {result.metadata && (
+                        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          {result.metadata.source && (
+                            <Typography variant="caption" sx={{ color: '#666' }}>
+                              Source: {result.metadata.source}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" sx={{ color: '#666' }}>
+                            Pertinence: {Math.round((result.score || 0.75) * 100)}%
+                          </Typography>
+                        </Box>
+                      )}
+                    </Paper>
+                  );
+                })}
+              </Box>
+            </>
+          )}
+        </Paper>
+      ) : null}
+      
+      {(engine1Response || isLoading1) ? (
+        <Paper sx={{ p: 3, mt: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Résultat Engine 1
+          </Typography>
+          {isLoading1 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Typography variant="h6" gutterBottom>
+                Code SH: {engine1Response || 'Aucun code trouvé'}
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" gutterBottom>
+                Explication:
+              </Typography>
+              <Typography 
+                variant="body2" 
+                component="div" 
+                sx={{ 
+                  whiteSpace: 'pre-line',
+                  '& strong': {
+                    color: '#2e7d32',
+                    backgroundColor: '#e8f5e9',
+                    padding: '0 4px',
+                    borderRadius: '3px'
+                  }
+                }}
+                dangerouslySetInnerHTML={{ 
+                  __html: engine1Explanation
+                }}
+              />
+            </>
+          )}
+        </Paper>
+      ) : null}
+      
+      {(engine2Response || isLoading2) ? (
+        <Paper sx={{ p: 3, mt: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Résultat Engine 2
+          </Typography>
+          {isLoading2 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Typography variant="h6" gutterBottom>
+                Code SH: {engine2Response || 'Aucun code trouvé'}
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" gutterBottom>
+                Explication:
+              </Typography>
+              <Typography 
+                variant="body2" 
+                component="div" 
+                sx={{ 
+                  whiteSpace: 'pre-line',
+                  '& strong': {
+                    color: '#2e7d32',
+                    backgroundColor: '#e8f5e9',
+                    padding: '0 4px',
+                    borderRadius: '3px'
+                  }
+                }}
+                dangerouslySetInnerHTML={{ 
+                  __html: engine2Explanation
+                }}
+              />
+            </>
+          )}
+        </Paper>
+      ) : null}
+      
+      {(engine3Response || isLoading3) ? (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Résultat Engine 3
+          </Typography>
+          {isLoading3 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Typography variant="h6" gutterBottom>
+                Code SH: {engine3Response || 'Aucun code trouvé'}
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" gutterBottom>
+                Explication:
+              </Typography>
+              <Typography 
+                variant="body2" 
+                component="div" 
+                sx={{ 
+                  whiteSpace: 'pre-line',
+                  '& strong': {
+                    color: '#2e7d32',
+                    backgroundColor: '#e8f5e9',
+                    padding: '0 4px',
+                    borderRadius: '3px'
+                  }
+                }}
+                dangerouslySetInnerHTML={{ 
+                  __html: engine3Explanation
+                }}
+              />
+            </>
+          )}
+        </Paper>
+      ) : null}
+      
+      {/* Fenêtre modale pour afficher les optimisations */}
+      <CorrectionsModal 
+        open={correctionsModalOpen} 
+        onClose={() => setCorrectionsModalOpen(false)} 
+      />
+    </Box>
+  );
+}
+
+export default Query;
