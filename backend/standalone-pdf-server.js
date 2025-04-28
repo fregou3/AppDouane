@@ -22,6 +22,7 @@ require('dotenv').config();
 // Créer une application Express
 const app = express();
 const PORT = 5005;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Configuration CORS
 app.use(cors({
@@ -302,9 +303,10 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Démarrer le serveur
-app.listen(PORT, () => {
-  console.log(`Serveur PDF autonome démarré sur http://localhost:${PORT}`);
+// Démarrer le serveur sur toutes les interfaces réseau
+app.listen(PORT, HOST, () => {
+  console.log(`Serveur PDF autonome démarré sur ${HOST}:${PORT}`);
+  console.log(`API PDF accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
   console.log('Routes disponibles:');
   console.log('- GET /list-vector-stores');
   console.log('- POST /direct-pdf-search');
