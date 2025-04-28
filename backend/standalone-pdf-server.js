@@ -76,8 +76,8 @@ function loadExistingVectorStores() {
     
     // Filtrer les fichiers JSON qui pourraient contenir des bases vectorielles
     const vectorStoreFiles = files.filter(file => 
-      file.endsWith('.json') && 
-      (file.includes('vector-store') || file.includes('_17'))
+      file.endsWith('.json')
+      // Accepter tous les fichiers JSON, car ils sont créés par notre fonction saveVectorStoreToFile
     );
     
     console.log(`${vectorStoreFiles.length} fichiers de bases vectorielles trouvés.`);
