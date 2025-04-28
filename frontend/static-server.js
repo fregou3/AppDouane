@@ -102,10 +102,10 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// Démarrer le serveur
-server.listen(PORT, () => {
+// Démarrer le serveur sur toutes les interfaces réseau (0.0.0.0)
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur frontend démarré sur le port ${PORT}`);
-  console.log(`Application accessible à l'adresse: http://localhost:${PORT}`);
+  console.log(`Application accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
 });
 
 // Gérer les erreurs du serveur
