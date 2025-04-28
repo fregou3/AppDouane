@@ -2789,8 +2789,11 @@ app.get('/api/test-image-analysis', (req, res) => {
   res.json({ message: 'API d\'analyse d\'images accessible' });
 });
 
-// Démarrer le serveur
+// Démarrer le serveur sur toutes les interfaces réseau (0.0.0.0)
 const PORT = process.env.PORT || 5004;
-app.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`Serveur démarré sur ${HOST}:${PORT}`);
+  console.log(`API accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
 });
