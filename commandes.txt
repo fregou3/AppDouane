@@ -74,3 +74,31 @@ cd C:\App\douane_V3_1.0\douane_v3.9.10; node image-server.js
 Backend principal sur le port 5004
 Serveur d'analyse de PDF sur le port 5005
 Serveur d'image sur le port 5006
+
+# Démarrer le serveur d'image sur le port 5006
+cd /home/ubuntu/douane_v3.9.11/AppDouane/
+sudo pm2 start image-server.js --name "douane-image"
+
+# Démarrer le frontend React avec Express
+cd /home/ubuntu/douane_v3.9.11/AppDouane/frontend/
+# Installer les dépendances si ce n'est pas déjà fait
+sudo npm install
+# Installer express pour le serveur
+sudo npm install express
+# Construire une version de production du frontend
+sudo npm run build
+# Démarrer le frontend avec le script Express sur le port 3004
+sudo pm2 start serve-app.js --name "douane-frontend"
+
+# Voir les processus en cours d'exécution
+sudo pm2 list
+
+# Arrêter tous les processus si nécessaire
+sudo pm2 stop all
+
+# Redémarrer tous les processus
+sudo pm2 restart all
+
+# Configurer PM2 pour démarrer automatiquement au redémarrage du système
+sudo pm2 startup
+sudo pm2 save
