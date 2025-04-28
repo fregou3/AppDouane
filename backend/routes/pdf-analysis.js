@@ -803,6 +803,64 @@ const formatText = (text, highlightCodes = false) => {
 };
 
 /**
+ * Sauvegarde une base vectorielle sur disque pour le serveur PDF autonome
+ * @param {MemoryVectorStore} vectorStore - La base vectorielle à sauvegarder
+ * @param {string} collectionName - Nom de la collection
+ * @returns {Promise<boolean>} - True si la sauvegarde a réussi, false sinon
+ */
+const saveVectorStoreToFile = async (vectorStore, collectionName) => {
+  try {
+    // Créer le répertoire uploads s'il n'existe pas
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Extraire les vecteurs et documents de la base vectorielle
+    const vectors = [];
+    const documents = [];
+    
+    // Accéder aux données internes de la base vectorielle
+    const docstore = vectorStore._docstore;
+    const docIds = Array.from(docstore._docs.keys());
+    
+    // Pour chaque document, récupérer son vecteur correspondant
+    for (const docId of docIds) {
+      const doc = docstore._docs.get(docId);
+      if (doc) {
+        documents.push(doc);
+        // Récupérer le vecteur correspondant
+        const vector = vectorStore._vectorstoreType === 'memory' ? 
+          vectorStore._vectors.find(v => v.id === docId)?.values :
+          await vectorStore.embeddings.embedQuery(doc.pageContent);
+        
+        if (vector) {
+          vectors.push(vector);
+        }
+      }
+    }
+    
+    // Créer l'objet à sauvegarder
+    const vectorStoreData = {
+      collectionName,
+      createdAt: Date.now(),
+      vectors,
+      documents
+    };
+    
+    // Sauvegarder dans un fichier JSON
+    const filePath = path.join(uploadsDir, `${collectionName}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(vectorStoreData, null, 2));
+    
+    console.log(`Base vectorielle ${collectionName} sauvegardée sur disque: ${filePath}`);
+    return true;
+  } catch (error) {
+    console.error(`Erreur lors de la sauvegarde de la base vectorielle ${collectionName}:`, error);
+    return false;
+  }
+};
+
+/**
  * Crée une base de données vectorielle à partir du texte extrait
  * @param {string} text - Texte extrait du PDF
  * @param {string} collectionName - Nom de la collection (utilisé comme identifiant)
@@ -1365,6 +1423,9 @@ router.post('/analyze', upload.single('pdfFile'), async (req, res) => {
     // pour pouvoir y accéder plus tard
     global.vectorStores = global.vectorStores || {};
     global.vectorStores[collectionName] = vectorStore;
+    
+    // Sauvegarder la base vectorielle sur disque pour le serveur PDF autonome
+    await saveVectorStoreToFile(vectorStore, collectionName);
     
     // Renvoyer les résultats
     res.json({
