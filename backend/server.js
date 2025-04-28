@@ -1,3 +1,6 @@
+// Charger le polyfill pour ReadableStream
+require('./polyfill');
+
 // Charger les variables d'environnement
 require('dotenv').config();
 
