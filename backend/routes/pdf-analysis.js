@@ -820,23 +820,73 @@ const saveVectorStoreToFile = async (vectorStore, collectionName) => {
     const vectors = [];
     const documents = [];
     
-    // Accéder aux données internes de la base vectorielle
-    const docstore = vectorStore._docstore;
-    const docIds = Array.from(docstore._docs.keys());
-    
-    // Pour chaque document, récupérer son vecteur correspondant
-    for (const docId of docIds) {
-      const doc = docstore._docs.get(docId);
-      if (doc) {
-        documents.push(doc);
-        // Récupérer le vecteur correspondant
-        const vector = vectorStore._vectorstoreType === 'memory' ? 
-          vectorStore._vectors.find(v => v.id === docId)?.values :
-          await vectorStore.embeddings.embedQuery(doc.pageContent);
-        
-        if (vector) {
-          vectors.push(vector);
+    // Méthode sécurisée pour extraire les documents et vecteurs
+    // en fonction de la structure de la base vectorielle
+    try {
+      // Si la base vectorielle a une méthode pour récupérer tous les documents
+      if (typeof vectorStore.docstore?.search === 'function') {
+        const docs = await vectorStore.docstore.search('*');
+        for (const doc of docs) {
+          documents.push(doc);
+          // Générer un embedding pour ce document
+          if (vectorStore.embeddings) {
+            const vector = await vectorStore.embeddings.embedQuery(doc.pageContent);
+            vectors.push(vector);
+          }
         }
+      }
+      // Sinon, essayer d'accéder directement aux propriétés internes
+      else if (vectorStore._docstore && vectorStore._docstore._docs) {
+        const docstore = vectorStore._docstore;
+        const docIds = Array.from(docstore._docs.keys());
+        
+        for (const docId of docIds) {
+          const doc = docstore._docs.get(docId);
+          if (doc) {
+            documents.push(doc);
+            // Récupérer le vecteur correspondant
+            const vector = vectorStore._vectorstoreType === 'memory' ? 
+              vectorStore._vectors.find(v => v.id === docId)?.values :
+              await vectorStore.embeddings.embedQuery(doc.pageContent);
+            
+            if (vector) {
+              vectors.push(vector);
+            }
+          }
+        }
+      }
+      // Si aucune des méthodes précédentes ne fonctionne, utiliser similaritySearch pour extraire les documents
+      else if (typeof vectorStore.similaritySearch === 'function') {
+        // Récupérer tous les documents avec une requête générique
+        const docs = await vectorStore.similaritySearch('', 100);
+        for (const doc of docs) {
+          documents.push(doc);
+          // Générer un embedding pour ce document
+          if (vectorStore.embeddings) {
+            const vector = await vectorStore.embeddings.embedQuery(doc.pageContent);
+            vectors.push(vector);
+          }
+        }
+      }
+    } catch (innerError) {
+      console.warn(`Méthode d'extraction des documents échouée: ${innerError.message}. Essai de la méthode alternative...`);
+      
+      // Méthode alternative: utiliser asRetriever et getRelevantDocuments
+      try {
+        if (typeof vectorStore.asRetriever === 'function') {
+          const retriever = vectorStore.asRetriever();
+          const docs = await retriever.getRelevantDocuments('');
+          for (const doc of docs) {
+            documents.push(doc);
+            // Générer un embedding pour ce document
+            if (vectorStore.embeddings) {
+              const vector = await vectorStore.embeddings.embedQuery(doc.pageContent);
+              vectors.push(vector);
+            }
+          }
+        }
+      } catch (retrievalError) {
+        console.warn(`Méthode alternative d'extraction échouée: ${retrievalError.message}`);
       }
     }
     
