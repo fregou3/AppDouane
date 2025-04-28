@@ -79,16 +79,14 @@ Serveur d'image sur le port 5006
 cd /home/ubuntu/douane_v3.9.11/AppDouane/
 sudo pm2 start image-server.js --name "douane-image"
 
-# Démarrer le frontend React avec Express
+# Démarrer le frontend React avec un serveur HTTP natif
 cd /home/ubuntu/douane_v3.9.11/AppDouane/frontend/
 # Installer les dépendances si ce n'est pas déjà fait
 sudo npm install
-# Installer express pour le serveur
-sudo npm install express
 # Construire une version de production du frontend
 sudo npm run build
-# Démarrer le frontend avec le script Express sur le port 3004
-sudo pm2 start serve-app.js --name "douane-frontend"
+# Démarrer le frontend avec le serveur HTTP natif sur le port 3004
+sudo pm2 start static-server.js --name "douane-frontend"
 
 # Voir les processus en cours d'exécution
 sudo pm2 list
