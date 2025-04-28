@@ -44,13 +44,23 @@ const imageAnalysisRoutes = require('./routes/image-analysis');
 const app = express();
 global.app = app; // Exposer l'application Express globalement
 
-// Configuration CORS détaillée
-app.use(cors({
-  origin: true, // Permet toutes les origines en développement
+// Middleware pour parser le JSON
+app.use(express.json());
+
+// Configuration CORS détaillée pour l'environnement de production
+const corsOptions = {
+  origin: [
+    'http://app1.communify.solutions:3004',
+    'http://localhost:3000',
+    'http://localhost:3004'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-}));
+};
+
+// Appliquer la configuration CORS
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -2793,7 +2803,26 @@ app.get('/api/test-image-analysis', (req, res) => {
 const PORT = process.env.PORT || 5004;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
+// Créer un serveur HTTP explicite pour pouvoir définir les options de socket
+const http = require('http');
+const server = http.createServer(app);
+
+// Forcer la réutilisation de l'adresse socket même si elle est en état TIME_WAIT
+server.on('listening', () => {
+  // Activer SO_REUSEADDR
+  server.setNoDelay(true);
+});
+
+// Configurer le serveur pour réutiliser l'adresse immédiatement
+server.on('error', (e) => {
+  console.error('Erreur du serveur:', e.message);
+  if (e.code === 'EADDRINUSE') {
+    console.error(`Le port ${PORT} est déjà utilisé. Tentative de libération forcée...`);
+  }
+});
+
+// Activer la réutilisation d'adresse
+server.listen(PORT, HOST, () => {
   console.log(`Serveur démarré sur ${HOST}:${PORT}`);
   console.log(`API accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
 });
