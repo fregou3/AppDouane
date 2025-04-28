@@ -3,6 +3,9 @@
  * Ce serveur s'exécute sur le port 5005 pour éviter les conflits avec le serveur principal
  */
 
+// Charger le polyfill pour ReadableStream
+require('./polyfill');
+
 // Importer les dépendances nécessaires
 const express = require('express');
 const cors = require('cors');
