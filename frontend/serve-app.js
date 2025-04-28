@@ -30,8 +30,19 @@ app.use((req, res, next) => {
 app.use(express.static(buildPath));
 
 // Pour toutes les autres routes, renvoyer index.html
-app.get('*', (req, res) => {
+// Utiliser une route simple pour éviter les problèmes avec path-to-regexp
+app.get('/*', (req, res) => {
   res.sendFile(indexPath);
+});
+
+// Éviter d'utiliser des routes avec des caractères spéciaux
+app.use((req, res, next) => {
+  // Si la route contient des caractères spéciaux comme ':' dans l'URL (pas dans les paramètres de requête)
+  const urlPath = req.path;
+  if (urlPath.includes(':') && !urlPath.startsWith('/api/')) {
+    return res.sendFile(indexPath);
+  }
+  next();
 });
 
 // Gérer les erreurs
