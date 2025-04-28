@@ -40,9 +40,12 @@ import {
 } from '@mui/icons-material';
 import CorrectionsModal from './CorrectionsModal';
 
-// Configuration de l'API
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5004';
-const PDF_API_URL = 'http://localhost:5005'; // URL du serveur PDF autonome
+// Importer la configuration de l'API depuis config.js
+import { API_URL } from '../config';
+
+// URL du serveur PDF autonome - à adapter pour la production
+const isProduction = process.env.NODE_ENV === 'production';
+const PDF_API_URL = isProduction ? 'http://app1.communify.solutions:5005' : 'http://localhost:5005';
 
 function Query() {
   const [productDescription, setProductDescription] = useState('');
