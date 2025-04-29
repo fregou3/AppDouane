@@ -2354,9 +2354,8 @@ app.get('/debug-routes', (req, res) => {
   });
 });
 
-app.listen(process.env.PORT, process.env.HOST, () => {
-  console.log(`Serveur démarré sur ${process.env.HOST}:${process.env.PORT}`);
-});
+// Cet appel à app.listen a été supprimé pour éviter le conflit de port
+// Le serveur est démarré à la fin du fichier avec server.listen
 
 // Route temporaire pour la recherche dans les documents PDF
 app.post('/direct-pdf-search', async (req, res) => {
