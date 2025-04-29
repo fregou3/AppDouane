@@ -73,7 +73,7 @@ check_port 3004 || exit 1  # Frontend
 
 # 3. Installer les dépendances globales
 log "Installation des dépendances globales..."
-npm install -g pm2 serve || { error "Échec de l'installation des dépendances globales"; exit 1; }
+npm install -g pm2 || { error "Échec de l'installation de PM2"; exit 1; }
 
 # 4. Configurer et démarrer le backend
 log "Configuration et démarrage du backend..."
@@ -279,9 +279,9 @@ process.on('SIGINT', () => {
 EOF
 fi
 
-# Démarrer le frontend avec serve
+# Démarrer le frontend avec le serveur statique personnalisé
 log "Démarrage du frontend..."
-pm2 start serve --name "douane-frontend" -- -s build -l 3004 || { error "Échec du démarrage du frontend"; exit 1; }
+pm2 start static-server.js --name "douane-frontend" || { error "Échec du démarrage du frontend"; exit 1; }
 
 # 8. Sauvegarder la configuration PM2
 log "Sauvegarde de la configuration PM2..."
