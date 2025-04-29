@@ -109,9 +109,9 @@ fi
 log "Installation des dépendances du backend..."
 npm install || { error "Échec de l'installation des dépendances du backend"; exit 1; }
 
-# Démarrer le backend avec le script spécifique à Linux
+# Démarrer le backend avec PM2
 log "Démarrage du backend..."
-NODE_ENV=production npm run start:linux || { error "Échec du démarrage du backend"; exit 1; }
+NODE_ENV=production pm2 start server.js --name "douane-backend" || { error "Échec du démarrage du backend"; exit 1; }
 
 # 5. Démarrer le serveur PDF
 log "Démarrage du serveur PDF..."
