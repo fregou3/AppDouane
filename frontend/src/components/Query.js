@@ -752,7 +752,7 @@ function Query() {
     setCnCodeResults([]);
     
     try {
-      const response = await axios.get(`http://localhost:5004/api/lookup/${cnCode.trim()}`);
+      const response = await axios.get(`${API_URL}/api/lookup/${cnCode.trim()}`);
       setCnCodeResults(response.data);
     } catch (error) {
       console.error('Erreur lors de la recherche du code douane:', error);
