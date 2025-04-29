@@ -2832,8 +2832,9 @@ const server = http.createServer(app);
 
 // Forcer la réutilisation de l'adresse socket même si elle est en état TIME_WAIT
 server.on('listening', () => {
-  // Activer SO_REUSEADDR
-  server.setNoDelay(true);
+  // La méthode setNoDelay n'est pas disponible sur l'objet serveur HTTP
+  // mais sur les connexions socket individuelles
+  console.log(`Serveur en écoute sur ${HOST}:${PORT}`);
 });
 
 // Configurer le serveur pour réutiliser l'adresse immédiatement
