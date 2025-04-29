@@ -2803,6 +2803,30 @@ app.get('/api/test-image-analysis', (req, res) => {
 const PORT = process.env.PORT || 5004;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Détecter l'environnement d'exécution
+const isProduction = process.env.NODE_ENV === 'production';
+const isWindows = process.platform === 'win32';
+
+// Libérer le port si nécessaire (uniquement sur Linux en production)
+if (isProduction && !isWindows) {
+  try {
+    const { execSync } = require('child_process');
+    console.log(`Vérification si le port ${PORT} est déjà utilisé...`);
+    const portCheck = execSync(`lsof -i :${PORT} -t`).toString().trim();
+    
+    if (portCheck) {
+      console.log(`Port ${PORT} utilisé par le(s) processus ${portCheck}. Tentative de libération...`);
+      execSync(`kill -9 ${portCheck}`);
+      console.log(`Port ${PORT} libéré avec succès.`);
+    } else {
+      console.log(`Port ${PORT} libre.`);
+    }
+  } catch (error) {
+    // Si la commande lsof échoue, cela signifie généralement qu'aucun processus n'utilise le port
+    console.log(`Aucun processus n'utilise le port ${PORT} ou erreur lors de la vérification.`);
+  }
+}
+
 // Créer un serveur HTTP explicite pour pouvoir définir les options de socket
 const http = require('http');
 const server = http.createServer(app);
@@ -2818,11 +2842,28 @@ server.on('error', (e) => {
   console.error('Erreur du serveur:', e.message);
   if (e.code === 'EADDRINUSE') {
     console.error(`Le port ${PORT} est déjà utilisé. Tentative de libération forcée...`);
+    
+    // Tenter de se connecter à la base de données malgré l'erreur de port
+    try {
+      // Vérifier la connexion à la base de données
+      pool.connect().then(client => {
+        console.log('Connexion à la base de données réussie');
+        client.release();
+      }).catch(err => {
+        console.error('Erreur de connexion à la base de données:', err.message);
+      });
+    } catch (dbError) {
+      console.error('Erreur lors de la tentative de connexion à la base de données:', dbError.message);
+    }
   }
 });
 
 // Activer la réutilisation d'adresse
 server.listen(PORT, HOST, () => {
   console.log(`Serveur démarré sur ${HOST}:${PORT}`);
-  console.log(`API accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
+  if (isProduction) {
+    console.log(`API accessible à l'adresse: http://app1.communify.solutions:${PORT}`);
+  } else {
+    console.log(`API accessible à l'adresse: http://localhost:${PORT}`);
+  }
 });
