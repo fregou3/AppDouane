@@ -12,5 +12,5 @@ const IMAGE_API_PORT = '5006';
 // URL de l'API principale
 export const API_URL = `http://${API_HOST}:${API_PORT}`;
 
-// URL de l'API d'analyse d'images
-export const IMAGE_API_URL = `http://${API_HOST}:${IMAGE_API_PORT}`;
+// URL de l'API d'analyse d'images - FORCÉ en production pour éviter les problèmes de connexion
+export const IMAGE_API_URL = 'http://app1.communify.solutions:5006';
