@@ -40,8 +40,8 @@ import {
 } from '@mui/icons-material';
 import CorrectionsModal from './CorrectionsModal';
 
-// Importer la configuration de l'API depuis config.js
-import { API_URL } from '../config';
+// Configuration de l'API
+import { API_URL, IMAGE_API_URL } from '../config';
 
 // URL du serveur PDF autonome - à adapter pour la production
 const isProduction = process.env.NODE_ENV === 'production';
@@ -122,9 +122,10 @@ function Query() {
       const formData = new FormData();
       formData.append('image', file);
       
-      // Envoyer l'image à l'API dédiée pour analyse avec ChatGPT (port 5006)
-      console.log('Envoi de l\'image au serveur d\'analyse sur le port 5006');
-      const response = await axios.post(`http://localhost:5006/analyze-image`, formData, {
+      // Envoyer l'image à l'API dédiée pour analyse avec ChatGPT
+      console.log('Envoi de l\'image au serveur d\'analyse d\'images');
+      // Utiliser l'URL du serveur d'images depuis la configuration
+      const response = await axios.post(`${IMAGE_API_URL}/analyze-image`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

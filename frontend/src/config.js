@@ -7,6 +7,10 @@ const API_HOST = isProduction
   : (process.env.REACT_APP_API_HOST || 'localhost');
 
 const API_PORT = process.env.REACT_APP_API_PORT || '5004';
+const IMAGE_API_PORT = '5006';
 
-// URL de l'API
+// URL de l'API principale
 export const API_URL = `http://${API_HOST}:${API_PORT}`;
+
+// URL de l'API d'analyse d'images
+export const IMAGE_API_URL = `http://${API_HOST}:${IMAGE_API_PORT}`;

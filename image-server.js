@@ -127,7 +127,10 @@ app.post('/analyze-image', upload.single('image'), async (req, res) => {
 
 // Démarrer le serveur sur un port différent
 const PORT = 5006;
-app.listen(PORT, () => {
-  console.log(`Serveur d'analyse d'images démarré sur le port ${PORT}`);
-  console.log(`API accessible à http://localhost:${PORT}/analyze-image`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`Serveur d'analyse d'images démarré sur ${HOST}:${PORT}`);
+  console.log(`API accessible en local à http://localhost:${PORT}/analyze-image`);
+  console.log(`API accessible en production à http://app1.communify.solutions:${PORT}/analyze-image`);
 });
