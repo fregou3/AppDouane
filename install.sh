@@ -30,7 +30,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Répertoire de base de l'application
-APP_DIR="/home/ubuntu/douane_v3.9.11/AppDouane"
+APP_DIR="/home/ubuntu/douane_v3.9.12/AppDouane"
 
 # Vérifier si le répertoire existe
 if [ ! -d "$APP_DIR" ]; then
@@ -73,7 +73,7 @@ check_port 3004 || exit 1  # Frontend
 
 # 3. Installer les dépendances globales
 log "Installation des dépendances globales..."
-npm install -g pm2 || { error "Échec de l'installation de PM2"; exit 1; }
+npm install -g pm2 serve || { error "Échec de l'installation des dépendances globales"; exit 1; }
 
 # 4. Configurer et démarrer le backend
 log "Configuration et démarrage du backend..."
@@ -84,11 +84,12 @@ if [ ! -f ".env" ]; then
   warn "Le fichier .env n'existe pas. Création d'un fichier .env par défaut..."
   cat > .env << EOF
 # Server Configuration
-HOST=localhost
+HOST=0.0.0.0
 PORT=5004
+NODE_ENV=production
 
 # API Configuration
-API_HOST=localhost
+API_HOST=app1.communify.solutions
 API_PORT=5004
 
 # Database Configuration
@@ -108,9 +109,9 @@ fi
 log "Installation des dépendances du backend..."
 npm install || { error "Échec de l'installation des dépendances du backend"; exit 1; }
 
-# Démarrer le backend
+# Démarrer le backend avec le script spécifique à Linux
 log "Démarrage du backend..."
-pm2 start server.js --name "douane-backend" || { error "Échec du démarrage du backend"; exit 1; }
+NODE_ENV=production npm run start:linux || { error "Échec du démarrage du backend"; exit 1; }
 
 # 5. Démarrer le serveur PDF
 log "Démarrage du serveur PDF..."
@@ -278,19 +279,38 @@ process.on('SIGINT', () => {
 EOF
 fi
 
-# Démarrer le frontend
+# Démarrer le frontend avec serve
 log "Démarrage du frontend..."
-pm2 start static-server.js --name "douane-frontend" || { error "Échec du démarrage du frontend"; exit 1; }
+pm2 start serve --name "douane-frontend" -- -s build -l 3004 || { error "Échec du démarrage du frontend"; exit 1; }
 
 # 8. Sauvegarder la configuration PM2
 log "Sauvegarde de la configuration PM2..."
-pm2 save || warn "Échec de la sauvegarde de la configuration PM2"
+pm2 save || { warn "Échec de la sauvegarde de la configuration PM2"; }
+
+# Configurer PM2 pour démarrer automatiquement au démarrage du système
+log "Configuration du démarrage automatique de PM2..."
+pm2 startup || { warn "Échec de la configuration du démarrage automatique de PM2"; }
+
+# Vérifier l'installation
+log "Vérification de l'installation..."
+echo -e "\n${GREEN}=== SERVICES EN COURS D'EXÉCUTION ===${NC}"
+pm2 list
+
+echo -e "\n${GREEN}=== PORTS UTILISÉS ===${NC}"
+netstat -tulpn | grep -E ':(3004|5004|5005|5006)'
+
+echo -e "\n${GREEN}=== INSTALLATION TERMINÉE ===${NC}"
+echo -e "Backend: ${YELLOW}http://app1.communify.solutions:5004${NC}"
+echo -e "Serveur PDF: ${YELLOW}http://app1.communify.solutions:5005${NC}"
+echo -e "Serveur d'images: ${YELLOW}http://app1.communify.solutions:5006${NC}"
+echo -e "Frontend: ${YELLOW}http://app1.communify.solutions:3004${NC}"
+
+log "Pour vérifier les logs, utilisez: pm2 logs [nom-du-service]"
 
 # 9. Configurer PM2 pour démarrer au démarrage du système
 log "Configuration de PM2 pour démarrer au démarrage du système..."
 pm2 startup || warn "Échec de la configuration de PM2 pour démarrer au démarrage du système"
 
-# 10. Afficher l'état des services
 log "État des services :"
 pm2 list
 

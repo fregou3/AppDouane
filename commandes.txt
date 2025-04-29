@@ -101,4 +101,89 @@ sudo pm2 restart all
 sudo pm2 startup
 sudo pm2 save
 
+# Voir les logs d'un processus spécifique
 sudo pm2 logs douane-frontend
+sudo pm2 logs douane-backend
+sudo pm2 logs douane-image
+sudo pm2 logs douane-pdf
+
+# =============================================
+# COMMANDES OPTIMISÉES POUR LE DÉPLOIEMENT
+# =============================================
+
+# Supprimer toutes les instances PM2 et libérer les ports
+sudo pm2 stop all
+sudo pm2 delete all
+sudo pm2 save --force
+sudo pkill -f node
+
+# Vérifier qu'aucun processus n'utilise les ports
+sudo lsof -i :5004
+sudo lsof -i :5005
+sudo lsof -i :5006
+sudo lsof -i :3004
+
+# Démarrer le backend depuis le répertoire backend (avec le bon .env)
+cd /home/ubuntu/douane_v3.9.12/AppDouane/backend
+NODE_ENV=production npm run start:linux
+
+# Démarrer le serveur d'images
+cd /home/ubuntu/douane_v3.9.12/AppDouane
+sudo pm2 start image-server.js --name "douane-image"
+
+# Démarrer le serveur PDF depuis le répertoire backend
+cd /home/ubuntu/douane_v3.9.12/AppDouane/backend
+sudo pm2 start standalone-pdf-server.js --name "douane-pdf"
+
+# Démarrer le frontend
+cd /home/ubuntu/douane_v3.9.12/AppDouane/frontend
+sudo pm2 start serve --name "douane-frontend" -- -s build -l 3004
+
+# Sauvegarder la configuration PM2
+sudo pm2 save
+
+# =============================================
+# COMMANDES POUR LA RÉSOLUTION DES PROBLÈMES
+# =============================================
+
+# Libérer un port spécifique (remplacer PORT par le numéro de port)
+sudo fuser -k PORT/tcp
+
+# Identifier tous les processus Node.js en cours d'exécution
+ps aux | grep node
+
+# Vérifier les connexions réseau actives
+sudo netstat -tulpn | grep LISTEN
+
+# Vérifier l'espace disque disponible
+df -h
+
+# Vérifier l'utilisation des bases vectorielles
+du -sh /home/ubuntu/douane_v3.9.12/AppDouane/uploads
+
+# Sauvegarder les bases vectorielles
+sudo tar -czvf /home/ubuntu/vector_stores_backup.tar.gz /home/ubuntu/douane_v3.9.12/AppDouane/uploads
+
+# =============================================
+# SCRIPT D'INSTALLATION COMPLET
+# =============================================
+
+# Pour exécuter le script d'installation complet
+# 1. Télécharger le script
+wget -O install.sh https://raw.githubusercontent.com/fregou3/AppDouane/master/install.sh
+
+# 2. Rendre le script exécutable
+chmod +x install.sh
+
+# 3. Exécuter le script en tant que root
+sudo ./install.sh
+
+# Le script install.sh effectue les opérations suivantes :
+# - Arrête tous les services existants
+# - Vérifie que les ports nécessaires sont disponibles
+# - Installe les dépendances globales (pm2, serve)
+# - Configure et démarre le backend
+# - Démarre le serveur PDF
+# - Démarre le serveur d'images
+# - Configure et démarre le frontend
+# - Configure PM2 pour démarrer automatiquement au démarrage du système
