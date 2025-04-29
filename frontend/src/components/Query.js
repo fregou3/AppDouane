@@ -109,7 +109,7 @@ function Query() {
     setError('');
   };
 
-  const handleImageUpload = async (event) => {
+  const handleImageChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -124,10 +124,9 @@ function Query() {
       
       // Envoyer l'image à l'API dédiée pour analyse avec ChatGPT
       console.log('Envoi de l\'image au serveur d\'analyse d\'images');
-      // Utiliser TOUJOURS l'URL de production pour le serveur d'images
-      const imageApiUrl = 'http://app1.communify.solutions:5006';
-      console.log(`Utilisation de l'URL du serveur d'images: ${imageApiUrl}`);
-      const response = await axios.post(`${imageApiUrl}/analyze-image`, formData, {
+      // URL FIXE du serveur d'images en production - URL codée en dur
+      console.log('Utilisation de l\'URL du serveur d\'images: http://app1.communify.solutions:5006');
+      const response = await axios.post('http://app1.communify.solutions:5006/analyze-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
