@@ -827,7 +827,7 @@ function Query() {
               style={{ display: 'none' }}
               id="image-upload-button"
               type="file"
-              onChange={handleImageUpload}
+              onChange={handleImageChange}
             />
             <label htmlFor="image-upload-button">
               <Button
