@@ -3,6 +3,9 @@
  * Ce serveur n'utilise pas Express pour éviter les problèmes avec path-to-regexp
  */
 
+// Forcer le mode production
+process.env.NODE_ENV = 'production';
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
