@@ -124,9 +124,12 @@ function Query() {
       
       // Envoyer l'image à l'API dédiée pour analyse avec ChatGPT
       console.log('Envoi de l\'image au serveur d\'analyse d\'images');
-      // URL FIXE du serveur d'images en production - URL codée en dur
-      console.log('Utilisation de l\'URL du serveur d\'images: http://app1.communify.solutions:5006');
-      const response = await axios.post('http://app1.communify.solutions:5006/analyze-image', formData, {
+      
+      // URL ABSOLUE du serveur d'images en production - AUCUNE VARIABLE
+      const imageServerUrl = 'http://app1.communify.solutions:5006/analyze-image';
+      console.log('Utilisation de l\'URL du serveur d\'images:', imageServerUrl);
+      
+      const response = await axios.post(imageServerUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
