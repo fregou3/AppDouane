@@ -1,0 +1,22 @@
+{
+  "name": "douane-qa",
+  "version": "1.0.0",
+  "description": "Scripts de tests QA pour l'application Douane",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:api": "jest api",
+    "test:conformite": "jest conformite",
+    "test:e2e": "jest e2e",
+    "test:db": "jest db",
+    "test:integration": "jest integration",
+    "test:report": "node run-tests.js",
+    "setup": "node setup-tests.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "jest": "^29.7.0",
+    "pg": "^8.11.3",
+    "puppeteer": "^21.5.0"
+  }
+}

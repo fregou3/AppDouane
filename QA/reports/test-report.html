@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapport de Tests QA - Application Douane</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    .summary {
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .stat-box {
+      background-color: #fff;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex-basis: 23%;
+      text-align: center;
+    }
+    .passed { color: #27ae60; }
+    .failed { color: #e74c3c; }
+    .pending { color: #f39c12; }
+    .total { color: #2980b9; }
+    .test-suite {
+      background-color: #fff;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .test-suite h3 {
+      margin-top: 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .test-case {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 3px;
+    }
+    .test-case.pass { background-color: #e8f5e9; }
+    .test-case.fail { background-color: #ffebee; }
+    .test-case.pending { background-color: #fff8e1; }
+    .error-details {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-left: 3px solid #e74c3c;
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .timestamp {
+      color: #7f8c8d;
+      font-size: 0.9em;
+    }
+    .progress-bar {
+      height: 20px;
+      background-color: #ecf0f1;
+      border-radius: 10px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .progress {
+      height: 100%;
+      background-color: #2ecc71;
+      border-radius: 10px;
+      transition: width 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rapport de Tests QA - Application Douane</h1>
+  <p class="timestamp">Généré le 08/06/2025 18:40:59</p>
+  
+  <div class="summary">
+    <h2>Résumé</h2>
+    <div class="stats">
+      <div class="stat-box passed">
+        <h3>Réussis</h3>
+        <p>17</p>
+      </div>
+      <div class="stat-box failed">
+        <h3>Échoués</h3>
+        <p>7</p>
+      </div>
+      <div class="stat-box pending">
+        <h3>En attente</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-box total">
+        <h3>Total</h3>
+        <p>24</p>
+      </div>
+    </div>
+    
+    <div class="progress-bar">
+      <div class="progress" style="width: 70.83333333333334%"></div>
+    </div>
+    
+    <p>Durée des tests: NaN secondes</p>
+  </div>
+  
+  <h2>Détails des tests</h2>
+  
+  
+    <div class="test-suite">
+      <h3>format-analyse-data.test.js</h3>
+      <p>Statut: passed</p>
+      
+      
+        <div class="test-case pass">
+          <h4>Formatage des données d'analyse pour un document de type bon_livraison</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Formatage des données d'analyse pour un document de type bulletin_analyse</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Formatage des données d'analyse pour un document de type certificat</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Formatage des données d'analyse pour un document de type facture</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Gestion des erreurs dans la fonction formatAnalyseData</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+    </div>
+  
+    <div class="test-suite">
+      <h3>schema.test.js</h3>
+      <p>Statut: failed</p>
+      
+      
+        <div class="test-case pass">
+          <h4>Vérification de l'existence des tables d'analyses</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case fail">
+          <h4>Vérification de la structure des tables d'analyses</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoContain[2m([22m[32mexpected[39m[2m) // indexOf[22m
+
+Expected value: [32m"created_at"[39m
+Received array: [31m["fields", "document_id", "matiere_premiere_id", "id", "ratio_conformite", "date_analyse", "date_document", "nom_fournisseur", "numero_lot", "nom_matiere_premiere", …][39m
+    at Object.toContain (C:\App\douane_V3_1.0\douane_v3.9.17\QA\db\schema.test.js:68:25)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Vérification des contraintes de clé étrangère</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Vérification des index</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+    </div>
+  
+    <div class="test-suite">
+      <h3>frontend-backend.test.js</h3>
+      <p>Statut: failed</p>
+      
+      
+        <div class="test-case fail">
+          <h4>Flux complet d'analyse de document</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\integration\frontend-backend.test.js:110:7)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case fail">
+          <h4>Cohérence des données entre le frontend et le backend</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\integration\frontend-backend.test.js:188:7)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+    </div>
+  
+    <div class="test-suite">
+      <h3>document-analysis.test.js</h3>
+      <p>Statut: failed</p>
+      
+      
+        <div class="test-case fail">
+          <h4>Analyse d'un document de type bon_livraison</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\conformite\document-analysis.test.js:87:9)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case fail">
+          <h4>Analyse d'un document de type bulletin_analyse</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\conformite\document-analysis.test.js:87:9)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case fail">
+          <h4>Analyse d'un document de type certificat</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\conformite\document-analysis.test.js:87:9)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case fail">
+          <h4>Analyse d'un document de type facture</h4>
+          <p>Statut: Échoué</p>
+          <div class="error-details">ReferenceError: fail is not defined
+    at Object.fail (C:\App\douane_V3_1.0\douane_v3.9.17\QA\conformite\document-analysis.test.js:87:9)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)</div>
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Vérification des champs attendus dans les analyses</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+    </div>
+  
+    <div class="test-suite">
+      <h3>conformite.test.js</h3>
+      <p>Statut: passed</p>
+      
+      
+        <div class="test-case pass">
+          <h4>GET /api/conformite/lots - Récupération des lots</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>GET /api/conformite/matiere/:lot - Récupération des matières premières pour un lot</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>POST /api/conformite/analyze - Analyse d'un document</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>GET /api/conformite/analyse/:table/:documentId - Récupération d'une analyse spécifique</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+    </div>
+  
+    <div class="test-suite">
+      <h3>conformite-page.test.js</h3>
+      <p>Statut: passed</p>
+      
+      
+        <div class="test-case pass">
+          <h4>Navigation vers la page Conformité</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Sélection d'un lot</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Analyse d'un document</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+        <div class="test-case pass">
+          <h4>Affichage des résultats d'analyse pour chaque type de document</h4>
+          <p>Statut: Réussi</p>
+          
+        </div>
+      
+    </div>
+  
+  
+  <footer>
+    <p>Tests exécutés avec Jest</p>
+  </footer>
+</body>
+</html>
+    
